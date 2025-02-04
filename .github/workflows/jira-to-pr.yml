@@ -20,6 +20,7 @@ jobs:
         run: |
           BRANCH_NAME="${{ github.head_ref }}"
           ISSUE_ID=$(echo "$BRANCH_NAME" | grep -oE 'SN-[0-9]+')
+          echo "Detected issue id: $ISSUE_ID"
           echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
 
       - name: Fetch Jira issue details
@@ -42,6 +43,8 @@ jobs:
                   empty
                 end
             ' | sed '/^null$/d')
+          
+            echo "Detected issue title: $TITLE"
 
             # PR 설명 템플릿 생성
             echo "PR_BODY<<EOF" >> $GITHUB_ENV

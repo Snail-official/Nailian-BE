@@ -72,9 +72,6 @@ jobs:
       - name: Update PR Description
         if: env.ISSUE_ID != ''
         run: |
-          echo "Setting up GH_TOKEN from GH_PAT..."
-          export GH_TOKEN="${{ secrets.GH_PAT }}"  
-
           gh pr edit ${{ github.event.pull_request.number }} --title "${{ env.PR_TITLE }}" --body "$(cat <<EOF
           ${{ env.PR_BODY }}
 

@@ -1,4 +1,4 @@
-package art.snail.naillian.backend.common;
+package art.snail.naillian.backend.routes.common;
 
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;

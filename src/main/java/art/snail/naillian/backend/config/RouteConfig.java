@@ -1,6 +1,6 @@
 package art.snail.naillian.backend.config;
 
-import art.snail.naillian.backend.common.CommonController;
+import art.snail.naillian.backend.routes.common.CommonController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

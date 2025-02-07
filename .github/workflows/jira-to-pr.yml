@@ -51,7 +51,11 @@ jobs:
             echo "### 🔖 관련 티켓" >> $GITHUB_ENV
             echo "$ISSUE_ID ([Jira 링크](https://crusia.atlassian.net/browse/$ISSUE_ID))" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
+            echo "<br>" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
             echo "$DESCRIPTION" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV
+            echo "<br>" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
             echo "EOF" >> $GITHUB_ENV
 

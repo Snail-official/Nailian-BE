@@ -59,7 +59,7 @@ public class AuthController {
                 });
     }
 
-    @GetMapping("/callback/auth/kakao")
+    @GetMapping("/kakao")
     public Mono<ResponseEntity<String>> handleCallback(@RequestParam(name = "code", required = false) String code) {
         if (code == null) {
             log.error("카카오에서 code가 전달되지 않음");

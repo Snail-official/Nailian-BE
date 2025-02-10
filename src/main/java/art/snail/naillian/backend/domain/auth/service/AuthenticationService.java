@@ -14,6 +14,7 @@ import reactor.core.publisher.Mono;
 public class AuthenticationService {
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
+    private final TokenService tokenService;
 
     /** Access Token 검증 및 사용자 ID 추출 */
     public Mono<Integer> extractUserIdFromToken(String authorizationHeader) {
@@ -36,5 +37,22 @@ public class AuthenticationService {
             throw new ReportableError(HttpStatus.UNAUTHORIZED, "인증 토큰이 필요합니다.", 401);
         }
         return authorizationHeader.substring(7);
+    }
+
+    /** refreshToken을 사용해 새로운 accessToken 발급 */
+    public Mono<String> reIssueAccessToken(String refreshToken) {
+        return tokenService.getUserIdFromRefreshToken(refreshToken)
+                .flatMap(userId -> {
+                    if (userId == null) {
+                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "유효하지 않은 토큰입니다."));
+                    }
+                    return Mono.just(jwtProvider.generateAccessToken(userId));
+                });
+    }
+
+    /** 로그아웃 */
+    public Mono<Void> logout(String accessToken){
+        tokenService.invalidateAccessToken(accessToken);
+        return Mono.empty();
     }
 }

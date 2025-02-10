@@ -51,7 +51,10 @@ public class AuthenticationService {
     }
 
     /** 로그아웃 */
-    public Mono<Void> logout(String accessToken){
+    public Mono<Void> logout(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
+        }
         tokenService.invalidateAccessToken(accessToken);
         return Mono.empty();
     }

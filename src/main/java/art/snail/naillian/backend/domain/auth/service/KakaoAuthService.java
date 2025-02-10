@@ -3,12 +3,14 @@ package art.snail.naillian.backend.domain.auth.service;
 import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.service.UserService;
+import art.snail.naillian.backend.errors.ReportableError;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -69,9 +71,10 @@ public class KakaoAuthService {
                 .header("Authorization", "Bearer " + accessToken)
                 .retrieve()
                 .bodyToMono(JsonNode.class)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 응답에서 사용자 정보를 찾을 수 없습니다.")))
                 .flatMap(jsonNode -> {
                     if (!jsonNode.has("id")) {
-                        return Mono.error(new RuntimeException("카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
                     }
 
                     String platformUserId = jsonNode.get("id").asText();
@@ -79,7 +82,7 @@ public class KakaoAuthService {
                     log.info("카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
 
                     return userService.findOrCreate(platformUserId, nickname)
-                            .flatMap(user -> generateJwtTokens(user));
+                            .flatMap(this::generateJwtTokens);
                 });
     }
 

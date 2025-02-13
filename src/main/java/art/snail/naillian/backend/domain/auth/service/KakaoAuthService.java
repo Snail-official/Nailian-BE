@@ -72,42 +72,47 @@ public class KakaoAuthService {
     public Mono<User> getUserInfo(String accessTokenJson) {
         log.info("[log]사용자 정보 조회 요청 - AccessToken JSON: {}", accessTokenJson);
 
-        String accessToken;
-        try {
-            JsonNode tokenNode = new ObjectMapper().readTree(accessTokenJson);
-            accessToken = tokenNode.get("access_token").asText();
-        } catch (Exception e) {
-            log.error("[log]AccessToken JSON 파싱 오류", e);
-            return Mono.error(new RuntimeException("[log]AccessToken JSON 파싱 오류", e));
-        }
-
-        log.info("[log]실제 API 요청에 사용될 AccessToken: {}", accessToken);
-
-        return webClient.get()
-                .uri(USER_INFO_URI)
-                .header("Authorization", "Bearer " + accessToken)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
-                .flatMap(jsonNode -> {
-                    if (!jsonNode.has("id")) {
-                        log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
-                        return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+        return Mono.fromCallable(() -> new ObjectMapper().readTree(accessTokenJson))
+                .onErrorResume(e -> {
+                    log.error("[log]AccessToken JSON 파싱 오류", e);
+                    return Mono.error(new RuntimeException("[log]AccessToken JSON 파싱 오류", e));
+                })
+                .flatMap(tokenNode -> {
+                    if (!tokenNode.has("access_token") || !tokenNode.get("access_token").isTextual()) {
+                        log.error("[log]AccessToken JSON에 'access_token' 키가 없거나 잘못된 형식입니다: {}", tokenNode);
+                        return Mono.error(new RuntimeException("[log]올바른 'access_token' 값을 찾을 수 없습니다."));
                     }
 
-                    String platformUserId = jsonNode.get("id").asText();
-                    String nickname = jsonNode.path("properties").path("nickname").asText();
-                    log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+                    String accessToken = tokenNode.get("access_token").asText();
+                    log.info("[log]실제 API 요청에 사용될 AccessToken: {}", accessToken);
 
-                    return socialLoginRepository.findByPlatformUserId(platformUserId)
-                            .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
-                            .switchIfEmpty(createNewUser(platformUserId, nickname));
-                })
-                .onErrorResume(e -> {
-                    log.error("[log]사용자 정보 조회 중 오류 발생", e);
-                    return Mono.error(new RuntimeException("[log]사용자 정보 조회 실패", e));
+                    return webClient.get()
+                            .uri(USER_INFO_URI)
+                            .header("Authorization", "Bearer " + accessToken)
+                            .retrieve()
+                            .bodyToMono(JsonNode.class)
+                            .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
+                            .flatMap(jsonNode -> {
+                                if (!jsonNode.has("id") || !jsonNode.get("id").isTextual()) {
+                                    log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
+                                    return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+                                }
+
+                                String platformUserId = jsonNode.get("id").asText();
+                                String nickname = jsonNode.path("properties").path("nickname").asText();
+                                log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+
+                                return socialLoginRepository.findByPlatformUserId(platformUserId)
+                                        .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
+                                        .switchIfEmpty(createNewUser(platformUserId, nickname));
+                            })
+                            .onErrorResume(e -> {
+                                log.error("[log]사용자 정보 조회 중 오류 발생", e);
+                                return Mono.error(new RuntimeException("[log]사용자 정보 조회 실패", e));
+                            });
                 });
     }
+
 
 
 

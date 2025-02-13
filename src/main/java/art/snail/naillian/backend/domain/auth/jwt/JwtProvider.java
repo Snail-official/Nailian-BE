@@ -4,6 +4,7 @@ import art.snail.naillian.backend.errors.ReportableError;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import io.micrometer.common.lang.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -24,19 +25,27 @@ public class JwtProvider {
     }
 
     public String generateAccessToken(Integer userId) {
+        return generateAccessToken(userId, new Date());
+    }
+
+    public String generateAccessToken(Integer userId, @Nullable Date issueDate) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_EXPIRATION))
+                .setIssuedAt(issueDate != null ? issueDate : new Date()) // ✅ issueDate 없으면 현재 시간
+                .setExpiration(new Date(issueDate != null ? issueDate.getTime() + ACCESS_EXPIRATION : System.currentTimeMillis() + ACCESS_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String generateRefreshToken(Integer userId) {
+        return generateRefreshToken(userId, new Date());
+    }
+
+    public String generateRefreshToken(Integer userId, @Nullable Date issueDate) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXPIRATION))
+                .setIssuedAt(issueDate != null ? issueDate : new Date()) // issueDate 없으면 현재 시간
+                .setExpiration(new Date(issueDate != null ? issueDate.getTime() + REFRESH_EXPIRATION : System.currentTimeMillis() + REFRESH_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }

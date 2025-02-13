@@ -2,6 +2,7 @@ package art.snail.naillian.backend.domain.user.controller;
 
 
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
+import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,15 +22,13 @@ public class UserController {
     @GetMapping("/me")
     public Mono<ResponseEntity<Map<String, Object>>> getUserInfo(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.getUserFromToken(accessToken)
-                .map(user -> ResponseEntity.ok(Map.of(
-                        "code", 200,
-                        "message", "사용자 정보 조회 성공",
-                        "data", Map.of(
-                                "userId", user.getId(),
-                                "nickname", user.getNickname(),
-                                "profileImageUrl", user.getProfileImageUrl(),
-                                "createdAt", user.getCreatedAt()
-                        )
-                )));
+                .map(user -> {
+                    UserResponseDTO userResponse = UserResponseDTO.from(user);
+                    return ResponseEntity.ok(Map.of(
+                            "code", 200,
+                            "message", "사용자 정보 조회 성공",
+                            "data", userResponse
+                    ));
+                });
     }
 }

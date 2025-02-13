@@ -1,16 +1,17 @@
 package art.snail.naillian.backend.domain.auth.service;
 
 import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
+import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
-import art.snail.naillian.backend.domain.user.service.UserService;
-import art.snail.naillian.backend.errors.ReportableError;
+import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
+import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,8 +25,9 @@ public class KakaoAuthService {
     private static final Logger log = LoggerFactory.getLogger(KakaoAuthService.class);
 
     private final WebClient webClient;
+    private final UserRepository userRepository;
+    private final SocialLoginRepository socialLoginRepository;
     private final JwtProvider jwtProvider;
-    private final UserService userService;
 
     @Value("${kakao.auth.rest-api-key}")
     private String restApiKey;
@@ -40,7 +42,8 @@ public class KakaoAuthService {
     private final String TOKEN_URI = "https://kauth.kakao.com/oauth/token";
     private final String USER_INFO_URI = "https://kapi.kakao.com/v2/user/me";
 
-    /** 카카오 액세스 토큰 요청 */
+    /** 1. 카카오 액세스 토큰 요청 */
+
     public Mono<String> getAccessToken(String code) {
         log.info("[log] 카카오 토큰 요청 시작 - 받은 코드: {}", code);
         log.info("[log] 클라이언트 ID: {}", restApiKey);
@@ -53,7 +56,7 @@ public class KakaoAuthService {
                         .with("client_id", restApiKey)
                         .with("redirect_uri", callbackUrl)
                         .with("code", code)
-                        .with("client_secret", clientSecret)
+                        .with("client_secret", clientSecret) // 🔥 client_secret 추가
                 );
 
         return request.exchangeToMono(response -> {
@@ -65,28 +68,65 @@ public class KakaoAuthService {
     }
 
     /** 사용자 정보 조회 후 DB 저장 */
-    public Mono<Map<String, String>> getUserInfo(String accessToken) {
-        return webClient.get()
-                .uri(USER_INFO_URI)
-                .header("Authorization", "Bearer " + accessToken)
-                .retrieve()
-                .bodyToMono(JsonNode.class)
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 응답에서 사용자 정보를 찾을 수 없습니다.")))
-                .flatMap(jsonNode -> {
-                    if (!jsonNode.has("id")) {
-                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
-                    }
+    public Mono<User> getUserInfo(String accessTokenJson) {
+        log.info("[log]사용자 정보 조회 요청 - AccessToken JSON: {}", accessTokenJson);
 
-                    String platformUserId = jsonNode.get("id").asText();
-                    String nickname = jsonNode.path("properties").path("nickname").asText();
-                    log.info("카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+        try {
+            JsonNode tokenNode = new ObjectMapper().readTree(accessTokenJson);
+            String accessToken = tokenNode.get("access_token").asText();
 
-                    return userService.findOrCreate(platformUserId, nickname)
-                            .flatMap(this::generateJwtTokens);
-                });
+            log.info("[log]실제 API 요청에 사용될 AccessToken: {}", accessToken);
+
+            return webClient.get()
+                    .uri(USER_INFO_URI)
+                    .header("Authorization", "Bearer " + accessToken) // 🔥 AccessToken만 전달해야 함
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
+                    .flatMap(jsonNode -> {
+                        if (!jsonNode.has("id")) {
+                            log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
+                            return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+                        }
+
+                        String platformUserId = jsonNode.get("id").asText();
+                        String nickname = jsonNode.path("properties").path("nickname").asText();
+                        log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+
+                        return socialLoginRepository.findByPlatformUserId(platformUserId)
+                                .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
+                                .switchIfEmpty(createNewUser(platformUserId, nickname));
+                    })
+                    .onErrorResume(e -> {
+                        log.error("[log]사용자 정보 조회 중 오류 발생", e);
+                        return Mono.error(new RuntimeException("[log]사용자 정보 조회 실패", e));
+                    });
+        } catch (Exception e) {
+            log.error("[log]AccessToken JSON 파싱 오류", e);
+            return Mono.error(new RuntimeException("[log]AccessToken JSON 파싱 오류", e));
+        }
     }
 
-    /** JWT 생성 */
+
+
+    /** 새로운 사용자 생성 */
+    private Mono<User> createNewUser(String platformUserId, String nickname) {
+        return userRepository.save(
+                        User.builder()
+                                .nickname(nickname)
+                                .userType("KAKAO")
+                                .registeredIp("UNKNOWN")
+                                .build()
+                )
+                .flatMap(user -> socialLoginRepository.save(
+                        SocialLogin.builder()
+                                .userId(user.getId())
+                                .platform("KAKAO")
+                                .platformUserId(platformUserId)
+                                .build()
+                ).thenReturn(user));
+    }
+
     public Mono<Map<String, String>> generateJwtTokens(User user) {
         return Mono.just(Map.of(
                 "accessToken", jwtProvider.generateAccessToken(user.getId()),

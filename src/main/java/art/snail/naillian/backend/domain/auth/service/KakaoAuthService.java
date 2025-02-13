@@ -3,6 +3,7 @@ package art.snail.naillian.backend.domain.auth.service;
 import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
 import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
+import art.snail.naillian.backend.domain.user.entity.UserType;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,7 +57,7 @@ public class KakaoAuthService {
                         .with("client_id", restApiKey)
                         .with("redirect_uri", callbackUrl)
                         .with("code", code)
-                        .with("client_secret", clientSecret) // 🔥 client_secret 추가
+                        .with("client_secret", clientSecret)
                 );
 
         return request.exchangeToMono(response -> {
@@ -71,40 +72,41 @@ public class KakaoAuthService {
     public Mono<User> getUserInfo(String accessTokenJson) {
         log.info("[log]사용자 정보 조회 요청 - AccessToken JSON: {}", accessTokenJson);
 
+        String accessToken;
         try {
             JsonNode tokenNode = new ObjectMapper().readTree(accessTokenJson);
-            String accessToken = tokenNode.get("access_token").asText();
-
-            log.info("[log]실제 API 요청에 사용될 AccessToken: {}", accessToken);
-
-            return webClient.get()
-                    .uri(USER_INFO_URI)
-                    .header("Authorization", "Bearer " + accessToken) // 🔥 AccessToken만 전달해야 함
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
-                    .flatMap(jsonNode -> {
-                        if (!jsonNode.has("id")) {
-                            log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
-                            return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
-                        }
-
-                        String platformUserId = jsonNode.get("id").asText();
-                        String nickname = jsonNode.path("properties").path("nickname").asText();
-                        log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
-
-                        return socialLoginRepository.findByPlatformUserId(platformUserId)
-                                .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
-                                .switchIfEmpty(createNewUser(platformUserId, nickname));
-                    })
-                    .onErrorResume(e -> {
-                        log.error("[log]사용자 정보 조회 중 오류 발생", e);
-                        return Mono.error(new RuntimeException("[log]사용자 정보 조회 실패", e));
-                    });
+            accessToken = tokenNode.get("access_token").asText();
         } catch (Exception e) {
             log.error("[log]AccessToken JSON 파싱 오류", e);
             return Mono.error(new RuntimeException("[log]AccessToken JSON 파싱 오류", e));
         }
+
+        log.info("[log]실제 API 요청에 사용될 AccessToken: {}", accessToken);
+
+        return webClient.get()
+                .uri(USER_INFO_URI)
+                .header("Authorization", "Bearer " + accessToken)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
+                .flatMap(jsonNode -> {
+                    if (!jsonNode.has("id")) {
+                        log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
+                        return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+                    }
+
+                    String platformUserId = jsonNode.get("id").asText();
+                    String nickname = jsonNode.path("properties").path("nickname").asText();
+                    log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+
+                    return socialLoginRepository.findByPlatformUserId(platformUserId)
+                            .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
+                            .switchIfEmpty(createNewUser(platformUserId, nickname));
+                })
+                .onErrorResume(e -> {
+                    log.error("[log]사용자 정보 조회 중 오류 발생", e);
+                    return Mono.error(new RuntimeException("[log]사용자 정보 조회 실패", e));
+                });
     }
 
 
@@ -114,7 +116,7 @@ public class KakaoAuthService {
         return userRepository.save(
                         User.builder()
                                 .nickname(nickname)
-                                .userType("KAKAO")
+                                .userType(UserType.CUSTOMER)
                                 .registeredIp("UNKNOWN")
                                 .build()
                 )

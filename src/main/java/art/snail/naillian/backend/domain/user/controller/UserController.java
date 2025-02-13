@@ -20,15 +20,8 @@ public class UserController {
 
     /** 사용자 조회 */
     @GetMapping("/me")
-    public Mono<ResponseEntity<Map<String, Object>>> getUserInfo(@RequestHeader("Authorization") String accessToken) {
+    public Mono<ResponseEntity<UserResponseDTO>> getUserInfo(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.getUserFromToken(accessToken)
-                .map(user -> {
-                    UserResponseDTO userResponse = UserResponseDTO.from(user);
-                    return ResponseEntity.ok(Map.of(
-                            "code", 200,
-                            "message", "사용자 정보 조회 성공",
-                            "data", userResponse
-                    ));
-                });
+                .map(user -> ResponseEntity.ok(UserResponseDTO.from(user)));
     }
 }

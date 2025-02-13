@@ -32,17 +32,13 @@ public class AuthController {
 
     /** 카카오 로그인 */
     @GetMapping("/kakao/login/{code}")
-    public Mono<ResponseEntity<Map<String, Object>>> kakaoLogin(@PathVariable String code) {
+    public Mono<ResponseEntity<Map<String, String>>> kakaoLogin(@PathVariable String code) {
         return kakaoAuthService.getAccessToken(code)
                 .flatMap(kakaoAuthService::getUserInfo)
-                .map(tokens -> ResponseEntity.ok(Map.of(
-                        "code", 200,
-                        "message", "로그인 성공",
-                        "accessToken", tokens.get("accessToken"),
-                        "refreshToken", tokens.get("refreshToken")
-                )));
+                .map(ResponseEntity::ok);
     }
 
+    /** 콜백 URL 테스트 */
     @GetMapping("/kakao")
     public Mono<ResponseEntity<String>> handleCallback(@RequestParam(name = "code", required = false) String code) {
         if (code == null) {
@@ -54,16 +50,10 @@ public class AuthController {
     }
 
     @PostMapping("/signUp")
-    public Mono<ResponseEntity<Map<String, Object>>> signUp(@RequestBody Map<String, String> requestBody) {
+    public Mono<ResponseEntity<Map<String, String>>> signUp(@RequestBody Map<String, String> requestBody) {
         String authorizationCode = requestBody.get("authorizationcode");
-        return kakaoAuthService.getAccessToken(authorizationCode)
-                .flatMap(kakaoAuthService::getUserInfo)
-                .map(tokens -> ResponseEntity.ok(Map.of(
-                        "code", 200,
-                        "message", "가입 성공",
-                        "accessToken", tokens.get("accessToken"),
-                        "refreshToken", tokens.get("refreshToken")
-                )));
+        return authenticationService.signUpWithKakao(authorizationCode)
+                .map(response -> ResponseEntity.ok(response));
     }
 
     /** Token 재발급 */
@@ -71,20 +61,13 @@ public class AuthController {
     public Mono<ResponseEntity<Map<String, Object>>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
         return authenticationService.reIssueAccessToken(refreshToken)
-                .map(newAccessToken -> ResponseEntity.ok(Map.of(
-                        "code", 200,
-                        "message", "토큰 갱신 성공",
-                        "accessToken", newAccessToken
-                )));
+                .map(newAccessToken -> ResponseEntity.ok(Map.of("accessToken", newAccessToken)));
     }
 
     @PostMapping("/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.logout(accessToken)
-                .then(Mono.just(ResponseEntity.ok(Map.of(
-                        "code", 200,
-                        "message", "로그아웃되었습니다."
-                ))));
+                .then(Mono.just(ResponseEntity.ok().build()));
     }
 
 }

@@ -12,9 +12,9 @@ public class TokenService {
     private final StringRedisTemplate redisTemplate;
 
     /** Redis에 accessToken -> refresh Token 저장 및 userId 저장 */
-    public void storeTokenPair(String accessToken, String refreshToken, Integer userId){
-        redisTemplate.opsForValue().set("token" + accessToken, refreshToken, 30, TimeUnit.MINUTES);
-        redisTemplate.opsForValue().set("refresh" + refreshToken, userId.toString(), 7, TimeUnit.DAYS);
+    public void storeTokenPair(String accessToken, String refreshToken, Integer userId) {
+        redisTemplate.opsForValue().set("token:" + accessToken, refreshToken, 30, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set("refresh:" + refreshToken, userId.toString(), 7, TimeUnit.DAYS);
     }
 
     /** 유저ID에서 refreshToken 가져오기 */

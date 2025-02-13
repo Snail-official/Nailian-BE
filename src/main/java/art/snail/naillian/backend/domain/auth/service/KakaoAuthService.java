@@ -91,20 +91,19 @@ public class KakaoAuthService {
                             .header("Authorization", "Bearer " + accessToken)
                             .retrieve()
                             .bodyToMono(JsonNode.class)
-                            .doOnSuccess(jsonNode -> log.info("[log]카카오 사용자 정보 응답: {}", jsonNode))
+                            .doOnSuccess(jsonNode -> log.info("[DEBUG] 카카오 응답 중간 확인: {}", jsonNode))
                             .flatMap(jsonNode -> {
-                                if (!jsonNode.has("id") || !jsonNode.get("id").isTextual()) {
+                                if (!jsonNode.has("id") || !jsonNode.get("id").isNumber()) {
                                     log.error("[log]카카오 응답에 사용자 ID 없음: {}", jsonNode);
                                     return Mono.error(new RuntimeException("[log]카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
                                 }
 
-                                String platformUserId = jsonNode.get("id").asText();
-                                String nickname = jsonNode.path("properties").path("nickname").asText();
-                                log.info("[log]카카오 사용자 ID: {}, 닉네임: {}", platformUserId, nickname);
+                                String platformUserId = String.valueOf(jsonNode.get("id").asLong());
+                                log.info("[DEBUG] 추출된 사용자 ID: {}", platformUserId);
 
                                 return socialLoginRepository.findByPlatformUserId(platformUserId)
                                         .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
-                                        .switchIfEmpty(createNewUser(platformUserId, nickname));
+                                        .switchIfEmpty(createNewUser(platformUserId, jsonNode.path("properties").path("nickname").asText()));
                             })
                             .onErrorResume(e -> {
                                 log.error("[log]사용자 정보 조회 중 오류 발생", e);
@@ -112,6 +111,7 @@ public class KakaoAuthService {
                             });
                 });
     }
+
 
 
 

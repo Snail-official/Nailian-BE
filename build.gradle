@@ -37,6 +37,7 @@ dependencies {
     /* Database */
     runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
     implementation 'org.mariadb:r2dbc-mariadb:1.1.3'
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.1.4'
 
     /* Lombok */
     compileOnly 'org.projectlombok:lombok'

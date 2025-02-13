@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** 회원가입 + JWT 토큰 발급 담당 */
@@ -46,20 +47,18 @@ public class AuthenticationService {
     public Mono<Map<String, String>> signUpWithKakao(String authorizationCode) {
         return kakaoAuthService.getAccessToken(authorizationCode)
                 .flatMap(kakaoAuthService::getUserInfo)
-                .flatMap(userInfo -> {
-                    String platformUserId = userInfo.get("platformUserId");
-                    return kakaoAuthService.findUserByKakaoId(platformUserId)
-                            .switchIfEmpty(createNewUser(userInfo));
-                })
+                .flatMap(userInfo -> kakaoAuthService.findUserByKakaoId(userInfo.get("platformUserId"))
+                        .switchIfEmpty(createNewUser(userInfo))
+                )
                 .flatMap(user -> {
                     String accessToken = jwtProvider.generateAccessToken(user.getId());
                     String refreshToken = jwtProvider.generateRefreshToken(user.getId());
 
-                    return Mono.just(Map.of(
+                    return Mono.just(new LinkedHashMap<>(Map.of(
                             "nickname", user.getNickname(),
                             "accessToken", accessToken,
                             "refreshToken", refreshToken
-                    ));
+                    )));
                 });
     }
 

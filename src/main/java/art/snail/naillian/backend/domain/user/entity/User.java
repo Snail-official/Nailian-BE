@@ -19,12 +19,9 @@ public class User {
     @Id
     private Integer id;
     private String nickname;
-    private String userType;
+    private UserType userType;
     private String profileImageUrl;
     private String registeredIp;
-
-    @Column("created_at")
     private LocalDateTime createdAt;
-    @Column("deleted_at")
     private LocalDateTime deletedAt;
 }

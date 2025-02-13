@@ -33,8 +33,7 @@ public class AuthController {
     /** 카카오 로그인 */
     @GetMapping("/kakao/login/{code}")
     public Mono<ResponseEntity<Map<String, String>>> kakaoLogin(@PathVariable String code) {
-        return kakaoAuthService.getAccessToken(code)
-                .flatMap(kakaoAuthService::getUserInfo)
+        return authenticationService.signUpWithKakao(code)
                 .map(ResponseEntity::ok);
     }
 

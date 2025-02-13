@@ -24,6 +24,7 @@ public class JwtProvider {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
+    /** AccessToken 생성 */
     public String generateAccessToken(Integer userId) {
         return generateAccessToken(userId, new Date());
     }
@@ -31,12 +32,13 @@ public class JwtProvider {
     public String generateAccessToken(Integer userId, @Nullable Date issueDate) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(issueDate != null ? issueDate : new Date()) // ✅ issueDate 없으면 현재 시간
+                .setIssuedAt(issueDate != null ? issueDate : new Date())
                 .setExpiration(new Date(issueDate != null ? issueDate.getTime() + ACCESS_EXPIRATION : System.currentTimeMillis() + ACCESS_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    /** RefreshToken 생성 */
     public String generateRefreshToken(Integer userId) {
         return generateRefreshToken(userId, new Date());
     }
@@ -44,12 +46,13 @@ public class JwtProvider {
     public String generateRefreshToken(Integer userId, @Nullable Date issueDate) {
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(issueDate != null ? issueDate : new Date()) // issueDate 없으면 현재 시간
+                .setIssuedAt(issueDate != null ? issueDate : new Date())
                 .setExpiration(new Date(issueDate != null ? issueDate.getTime() + REFRESH_EXPIRATION : System.currentTimeMillis() + REFRESH_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    /** 토큰 검증 및 사용자 ID 추출 */
     public Mono<Integer> getUserIdFromToken(String token) {
         try {
             Integer userId = Integer.parseInt(Jwts.parserBuilder()

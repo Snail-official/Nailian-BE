@@ -4,6 +4,7 @@ import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
 import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
+import art.snail.naillian.backend.domain.user.entity.UserType;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
@@ -33,7 +34,7 @@ public class UserService {
         return userRepository.save(
                 User.builder()
                         .nickname(nickname)
-                        .userType("KAKAO")
+                        .userType(UserType.CUSTOMER)
                         .registeredIp("UNKNOWN")
                         .createdAt(LocalDateTime.now())
                         .build()

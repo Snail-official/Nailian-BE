@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Application Properties ###
+src/**/resources/application*.properties
+src/**/resources/application*.yml
+!src/**/resources/application-example.properties

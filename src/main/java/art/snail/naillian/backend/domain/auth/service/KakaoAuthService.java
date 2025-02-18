@@ -6,6 +6,7 @@ import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.entity.UserType;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
+import art.snail.naillian.backend.errors.ReportableError;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -83,20 +85,39 @@ public class KakaoAuthService {
                             .bodyToMono(JsonNode.class)
                             .flatMap(jsonNode -> {
                                 if (!jsonNode.has("id")) {
-                                    return Mono.error(new RuntimeException("카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
+                                    return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 응답에서 사용자 정보를 찾을 수 없습니다."));
                                 }
-                                String platformUserId = String.valueOf(jsonNode.get("id").asLong());
-                                String nickname = jsonNode.path("properties").path("nickname").asText();
-                                String email = jsonNode.path("kakao_account").path("email").asText();
 
-                                return Mono.just(Map.of(
-                                        "platformUserId", platformUserId,
-                                        "nickname", nickname,
-                                        "email", email
-                                ));
-                            });
+                                // ✅ 변수 미리 추출하여 캡처
+                                String platformUserId = String.valueOf(jsonNode.get("id").asLong());
+                                String extractedNickname = jsonNode.path("properties").path("nickname").asText();
+                                String extractedEmail = jsonNode.path("kakao_account").path("email").asText();
+
+                                return socialLoginRepository.findByPlatformUserId(platformUserId)
+                                        .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
+                                        .flatMap(user -> {
+                                            if (user.getDeletedAt() != null) {
+                                                return Mono.error(new ReportableError(HttpStatus.FORBIDDEN, "해당 계정은 삭제된 상태입니다."));
+                                            }
+                                            return Mono.just(Map.of(
+                                                    "platformUserId", platformUserId,
+                                                    "nickname", extractedNickname,  // 캡처된 변수 사용
+                                                    "email", extractedEmail         // 캡처된 변수 사용
+                                            ));
+                                        })
+                                        // user가 없을 경우 예외 처리
+                                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "사용자 정보가 존재하지 않습니다. 회원가입을 진행해주세요.")));
+                            })
+                            // socialLogin 정보가 없을 경우 신규 유저 처리
+                            .switchIfEmpty(Mono.just(Map.of(
+                                    "platformUserId", null,
+                                    "nickname", "unknown",  // 기본값 사용
+                                    "email", "unknown@example.com" // 기본값 사용
+                            )));
                 });
     }
+
+
 
     /** 사용자가 이미 가입된 회원인지 확인 */
     public Mono<User> findUserByKakaoId(String platformUserId){

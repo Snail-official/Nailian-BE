@@ -69,6 +69,6 @@ public class UserService {
         return authenticationService.extractUserIdFromToken(token)
                 .flatMap(userRepository::findById)
                 .map(UserResponseDTO::from)
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자 정보를 찾을 수 없습니다.", 404)));
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자 정보를 찾을 수 없습니다.")));
     }
 }

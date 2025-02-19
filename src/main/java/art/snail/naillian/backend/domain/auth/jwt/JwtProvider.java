@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import io.micrometer.common.lang.Nullable;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -18,50 +19,54 @@ public class JwtProvider {
 
     private final SecretKey key;
     private static final long ACCESS_EXPIRATION = 1000 * 60 * 30;
-    private static final long REFRESH_EXPIRATION = 1000 * 60 * 30;
+    private static final long REFRESH_EXPIRATION = 1000 * 60 * 60 * 24 * 7;
 
     public JwtProvider(@Value("${jwt.secret}") String secret) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(Integer userId) {
-        return generateAccessToken(userId, new Date());
-    }
-
+    /** AccessToken 생성 */
     public String generateAccessToken(Integer userId, @Nullable Date issueDate) {
+        Date now = issueDate != null ? issueDate : new Date();
         return Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(issueDate != null ? issueDate : new Date()) // ✅ issueDate 없으면 현재 시간
-                .setExpiration(new Date(issueDate != null ? issueDate.getTime() + ACCESS_EXPIRATION : System.currentTimeMillis() + ACCESS_EXPIRATION))
+                .setIssuedAt(now)  // 동일한 발행 시점 유지
+                .setExpiration(new Date(now.getTime() + ACCESS_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-    }
-
-    public String generateRefreshToken(Integer userId) {
-        return generateRefreshToken(userId, new Date());
     }
 
     public String generateRefreshToken(Integer userId, @Nullable Date issueDate) {
+        Date now = issueDate != null ? issueDate : new Date();
+        String refreshTokenId = UUID.randomUUID().toString();
+
         return Jwts.builder()
-                .setSubject(String.valueOf(userId))
-                .setIssuedAt(issueDate != null ? issueDate : new Date()) // issueDate 없으면 현재 시간
-                .setExpiration(new Date(issueDate != null ? issueDate.getTime() + REFRESH_EXPIRATION : System.currentTimeMillis() + REFRESH_EXPIRATION))
+                .setSubject(userId + "-" + refreshTokenId)
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + REFRESH_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
+    /** 토큰 검증 및 사용자 ID 추출 */
     public Mono<Integer> getUserIdFromToken(String token) {
-        try {
-            Integer userId = Integer.parseInt(Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject());
-            return Mono.just(userId);
-        } catch (Exception e) {
-            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다.", 401));
-        }
+        return Mono.fromCallable(() -> {
+                    String subject = Jwts.parserBuilder()
+                            .setSigningKey(key)
+                            .build()
+                            .parseClaimsJws(token)
+                            .getBody()
+                            .getSubject();
+
+                    // subject가 "1-랜덤UUID" 형식이면,
+                    // userId 부분만 파싱
+                    String userIdStr = subject.contains("-")
+                            ? subject.split("-")[0]
+                            : subject; // 혹은 refreshToken이 아닌 경우(= accessToken)엔 그냥 정수일 수도 있음
+
+                    return Integer.parseInt(userIdStr);
+                })
+                .onErrorMap(e -> new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다.", 401));
     }
 
 }

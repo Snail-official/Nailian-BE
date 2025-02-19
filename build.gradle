@@ -63,8 +63,8 @@ dependencies {
     /* redis */
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    implementation 'io.r2dbc:r2dbc-h2' // H2 R2DBC 드라이버 추가
-    implementation 'com.h2database:h2' // H2 JDBC 드라이버 (테스트용)
+    /* jackson */
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 }
 

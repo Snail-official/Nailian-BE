@@ -17,6 +17,7 @@ public class AuthConfig {
     SecurityWebFilterChain defaultSecurityFilterChain(ServerHttpSecurity http) throws Exception {
         return http
                 .authorizeExchange(exchange -> exchange.anyExchange().permitAll())
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .build();
     }
 }

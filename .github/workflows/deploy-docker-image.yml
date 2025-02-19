@@ -31,6 +31,8 @@ jobs:
 
   trigger-deploy-infra:
     runs-on: ubuntu-latest
+    needs:
+      - build-and-push-docker
     steps:
       - name: Dispatch event
         run: gh api /repos/snail-official/nailian-iac/dispatches -f event_type='restart-backend-dev'

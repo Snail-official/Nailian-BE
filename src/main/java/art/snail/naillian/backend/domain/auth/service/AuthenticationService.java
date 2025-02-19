@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 /** 회원가입 + JWT 토큰 발급 담당 */
@@ -61,24 +62,17 @@ public class AuthenticationService {
 
 
 
-    /** 로그아웃 */
     public Mono<Map<String, Object>> logout(String accessToken) {
-        if (accessToken == null || accessToken.isBlank()) {
-            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
-        }
+        tokenService.invalidateAccessToken(accessToken);
 
-        return extractUserIdFromToken(accessToken)
-                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId)
-                        .flatMap(refreshToken -> {
-                            tokenService.invalidateAccessToken(accessToken);
-                            tokenService.invalidateRefreshToken(refreshToken);
-                            return Mono.empty();
-                        })
-                )
-                .then(Mono.just(Map.of(
-                        "code", 200,
-                        "message", "로그아웃 성공",
-                        "data", null
-                )));
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "로그아웃 성공");
+        response.put("data", null);
+
+        return Mono.just(response);
     }
+
+
+
 }

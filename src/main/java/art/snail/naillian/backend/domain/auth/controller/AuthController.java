@@ -39,7 +39,8 @@ public class AuthController {
     @PostMapping("/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.logout(accessToken)
-                .then(Mono.just(ResponseEntity.ok().build()));
+                .map(body -> ResponseEntity.ok(body));
     }
+
 
 }

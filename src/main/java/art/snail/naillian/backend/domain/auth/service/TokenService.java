@@ -32,6 +32,11 @@ public class TokenService {
                 .defaultIfEmpty(false);
     }
 
+    /** UserId 기반 refreshToken 조회 */
+    public Mono<String> getRefreshTokenByUserId(Integer userId) {
+        return Mono.justOrEmpty(redisTemplate.opsForValue().get("refresh:" + userId));
+    }
+
     /** RefreshToken 사용 시 기존 AccessToken 폐기 */
     public void invalidateAccessToken(String accessToken) {
         redisTemplate.delete("token:" + accessToken);

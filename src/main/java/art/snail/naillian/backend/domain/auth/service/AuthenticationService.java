@@ -60,7 +60,14 @@ public class AuthenticationService {
         if (accessToken == null || accessToken.isBlank()) {
             return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
         }
-        tokenService.invalidateAccessToken(accessToken);
-        return Mono.empty();
+        return extractUserIdFromToken(accessToken)
+                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // ✅ userId 기반 refreshToken 조회
+                        .flatMap(refreshToken -> {
+                            tokenService.invalidateAccessToken(accessToken);
+                            tokenService.invalidateRefreshToken(refreshToken); // ✅ refreshToken 삭제
+                            return Mono.empty();
+                        })
+                )
+                .then();
     }
 }

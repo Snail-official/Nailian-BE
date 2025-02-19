@@ -1,4 +1,4 @@
-name: deploy-docker-image.yml
+name: Build and Deploy docker image
 on:
   push:
     branches:

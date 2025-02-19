@@ -2,22 +2,14 @@ package art.snail.naillian.backend.domain.auth.controller;
 
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.auth.service.KakaoAuthService;
-import art.snail.naillian.backend.domain.user.service.UserService;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -30,29 +22,10 @@ public class AuthController {
     private final KakaoAuthService kakaoAuthService;
     private final AuthenticationService authenticationService;
 
-    /** 카카오 로그인 */
-    @GetMapping("/kakao/login/{code}")
-    public Mono<ResponseEntity<Map<String, String>>> kakaoLogin(@PathVariable String code) {
-        return authenticationService.signUpWithKakao(code)
-                .map(ResponseEntity::ok);
-    }
+    @PostMapping("/kakao")
+    public Mono<Map<String, Object>> kakaoLogin(@RequestBody(required = false) Map<String, String> body) {
 
-    /** 콜백 URL 테스트 */
-    @GetMapping("/kakao")
-    public Mono<ResponseEntity<String>> handleCallback(@RequestParam(name = "code", required = false) String code) {
-        if (code == null) {
-            log.error("카카오에서 code가 전달되지 않음");
-            return Mono.just(ResponseEntity.badRequest().body("카카오에서 code가 전달되지 않았습니다."));
-        }
-        log.info("카카오 인증 코드: {}", code);
-        return Mono.just(ResponseEntity.ok("Received code: " + code));
-    }
-
-    @PostMapping("/signUp")
-    public Mono<ResponseEntity<Map<String, String>>> signUp(@RequestBody Map<String, String> requestBody) {
-        String authorizationCode = requestBody.get("authorizationcode");
-        return authenticationService.signUpWithKakao(authorizationCode)
-                .map(response -> ResponseEntity.ok(response));
+        return kakaoAuthService.kakaoLogin(body);
     }
 
     /** Token 재발급 */

@@ -38,34 +38,14 @@ public class JwtProvider {
 
     public String generateRefreshToken(Integer userId, @Nullable Date issueDate) {
         Date now = issueDate != null ? issueDate : new Date();
-        String refreshTokenId = UUID.randomUUID().toString(); // ✅ 난수 추가
+        String refreshTokenId = UUID.randomUUID().toString();
 
         return Jwts.builder()
-                .setSubject(userId + "-" + refreshTokenId) // ✅ UUID 포함하여 accessToken과 차별화
+                .setSubject(userId + "-" + refreshTokenId)
                 .setIssuedAt(now)
                 .setExpiration(new Date(now.getTime() + REFRESH_EXPIRATION))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
-    }
-
-    /** RefreshToken 생성 */
-    public Mono<Integer> getUserIdFromRefreshToken(String refreshToken) {
-        return Mono.justOrEmpty(refreshToken)
-                .flatMap(token -> {
-                    try {
-                        String subject = Jwts.parserBuilder()
-                                .setSigningKey(key)
-                                .build()
-                                .parseClaimsJws(token)
-                                .getBody()
-                                .getSubject();
-
-                        String userIdStr = subject.split("-")[0];
-                        return Mono.just(Integer.parseInt(userIdStr));
-                    } catch (Exception e) {
-                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "유효하지 않은 토큰입니다."));
-                    }
-                });
     }
 
     /** 토큰 검증 및 사용자 ID 추출 */

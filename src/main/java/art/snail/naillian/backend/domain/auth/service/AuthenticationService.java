@@ -46,14 +46,18 @@ public class AuthenticationService {
 
     /** refreshToken을 사용해 새로운 accessToken 발급 */
     public Mono<String> reIssueAccessToken(String refreshToken) {
-        return tokenService.getUserIdFromRefreshToken(refreshToken)
-                .flatMap(userId -> {
-                    if (userId == null) {
-                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "유효하지 않은 토큰입니다."));
-                    }
-                    return Mono.just(jwtProvider.generateAccessToken(userId, new Date()));
-                });
+        return jwtProvider.getUserIdFromToken(refreshToken) // JWT 서명 검증 및 userId 추출
+                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // Redis에서 저장된 refreshToken 가져오기
+                        .flatMap(storedToken -> {
+                            if (!storedToken.equals(refreshToken)) { // Redis에 저장된 토큰과 비교
+                                return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다."));
+                            }
+                            return Mono.just(jwtProvider.generateAccessToken(userId, new Date())); // 새 accessToken 발급
+                        })
+                )
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다."))); // 저장된 refreshToken이 없을 경우
     }
+
 
     /** 로그아웃 */
     public Mono<Void> logout(String accessToken) {
@@ -61,10 +65,10 @@ public class AuthenticationService {
             return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
         }
         return extractUserIdFromToken(accessToken)
-                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // ✅ userId 기반 refreshToken 조회
+                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // userId 기반 refreshToken 조회
                         .flatMap(refreshToken -> {
                             tokenService.invalidateAccessToken(accessToken);
-                            tokenService.invalidateRefreshToken(refreshToken); // ✅ refreshToken 삭제
+                            tokenService.invalidateRefreshToken(refreshToken); // refreshToken 삭제
                             return Mono.empty();
                         })
                 )

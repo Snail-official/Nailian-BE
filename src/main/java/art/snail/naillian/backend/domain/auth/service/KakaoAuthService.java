@@ -159,9 +159,9 @@ public class KakaoAuthService {
                                 })
                 )
                 // 없으면 새로 생성
-                .switchIfEmpty(createNewUser(platformUserId, nickname, email));
+                .switchIfEmpty(createNewUser(platformUserId, nickname));
     }
-    private Mono<User> createNewUser(String platformUserId, String nickname, String email) {
+    private Mono<User> createNewUser(String platformUserId, String nickname) {
         User newUser = User.builder()
                 .nickname(nickname)
                 .userType(UserType.CUSTOMER)

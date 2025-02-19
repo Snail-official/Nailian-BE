@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.Date;
+import java.util.Map;
 
 /** 회원가입 + JWT 토큰 발급 담당 */
 
@@ -46,32 +47,38 @@ public class AuthenticationService {
 
     /** refreshToken을 사용해 새로운 accessToken 발급 */
     public Mono<String> reIssueAccessToken(String refreshToken) {
-        return jwtProvider.getUserIdFromToken(refreshToken) // JWT 서명 검증 및 userId 추출
-                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // Redis에서 저장된 refreshToken 가져오기
+        return jwtProvider.getUserIdFromToken(refreshToken)
+                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId)
                         .flatMap(storedToken -> {
-                            if (!storedToken.equals(refreshToken)) { // Redis에 저장된 토큰과 비교
+                            if (!storedToken.equals(refreshToken)) {
                                 return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다."));
                             }
-                            return Mono.just(jwtProvider.generateAccessToken(userId, new Date())); // 새 accessToken 발급
+                            return Mono.just(jwtProvider.generateAccessToken(userId, new Date()));
                         })
                 )
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다."))); // 저장된 refreshToken이 없을 경우
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다.")));
     }
 
 
+
     /** 로그아웃 */
-    public Mono<Void> logout(String accessToken) {
+    public Mono<Map<String, Object>> logout(String accessToken) {
         if (accessToken == null || accessToken.isBlank()) {
             return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
         }
+
         return extractUserIdFromToken(accessToken)
-                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId) // userId 기반 refreshToken 조회
+                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId)
                         .flatMap(refreshToken -> {
                             tokenService.invalidateAccessToken(accessToken);
-                            tokenService.invalidateRefreshToken(refreshToken); // refreshToken 삭제
+                            tokenService.invalidateRefreshToken(refreshToken);
                             return Mono.empty();
                         })
                 )
-                .then();
+                .then(Mono.just(Map.of(
+                        "code", 200,
+                        "message", "로그아웃 성공",
+                        "data", null
+                )));
     }
 }

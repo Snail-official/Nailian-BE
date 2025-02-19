@@ -8,6 +8,9 @@ jobs:
   build-and-push-docker:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
       - name: Setup Docker buildx
         run: |
           docker buildx create --bootstrap --use

@@ -50,17 +50,13 @@ public class JwtProvider {
 
     /** 토큰 검증 및 사용자 ID 추출 */
     public Mono<Integer> getUserIdFromToken(String token) {
-        try {
-            Integer userId = Integer.parseInt(Jwts.parserBuilder()
-                    .setSigningKey(key)
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody()
-                    .getSubject());
-            return Mono.just(userId);
-        } catch (Exception e) {
-            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다.", 401));
-        }
+        return Mono.fromCallable(() ->
+                        Integer.parseInt(Jwts.parserBuilder()
+                                .setSigningKey(key)
+                                .build()
+                                .parseClaimsJws(token)
+                                .getBody()
+                                .getSubject()))
+                .onErrorMap(e -> new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다."));
     }
-
 }

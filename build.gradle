@@ -13,6 +13,12 @@ java {
     }
 }
 
+if (System.getenv().getOrDefault("_BUILD_CONTEXT", "").equalsIgnoreCase("docker")) {
+    bootJar {
+        setArchiveFileName("boot.jar")
+    }
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor

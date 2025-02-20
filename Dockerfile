@@ -10,7 +10,7 @@ RUN ./gradlew  # keep this as a separate code for caching
 RUN ./gradlew build bootJar
 
 
-FROM --platform=$BUILDPLATFORM amazoncorretto:17-alpine
+FROM --platform=$TARGETPLATFORM amazoncorretto:17-alpine
 
 WORKDIR /run
 COPY --from=builder /build/build/libs/boot.jar /run/boot.jar

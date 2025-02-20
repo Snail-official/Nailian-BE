@@ -19,7 +19,8 @@ jobs:
         id: repo_name
         uses: ASzc/change-string-case-action@v6
         with:
-          string: ${{ github.repository }}
+          string: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
 
       - uses: docker/login-action@v3
         with:

@@ -44,7 +44,11 @@ public class OnboardingService {
 
     private OnboardingStep calculateNextStep(User user) {
         int bitmask = user.getOnboardingStepsBitmask();
-        if ((bitmask & STEP_NICKNAME) == 0) return OnboardingStep.ONBOARDING_NICKNAME;
-        return OnboardingStep.ONBOARDING_PREFERENCES;
+        if ((bitmask & STEP_NICKNAME) == 0)
+            return OnboardingStep.ONBOARDING_NICKNAME;
+        if ((bitmask & STEP_PREFERENCES) == 0) {
+            return OnboardingStep.ONBOARDING_PREFERENCES;
+        }
+        throw new ReportableError(HttpStatus.BAD_REQUEST, "이미 모든 온보딩을 완료했습니다.");
     }
 }

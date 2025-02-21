@@ -62,15 +62,15 @@ public class KakaoAuthService {
 
     public Mono<Map<String, Object>> kakaoLogin(Map<String, String> body) {
         // 여기서 body 검증
-        if (body == null || !body.containsKey("code")) {
+        if (body == null || !body.containsKey("kakaoCode")) {
             // 실패 응답 Map 만들어 반환
             return Mono.just(buildErrorResponse(400, "카카오 인가코드(code)가 필요합니다."));
         }
 
-        String code = body.get("code");
+        String kakaoCode = body.get("kakaoCode");
 
         // 이제 아래 로직들은 “인가코드 -> 액세스 토큰 -> 사용자 정보 -> 유저 생성/조회 -> 토큰 발급 -> 응답”
-        return getAccessTokenJson(code)
+        return getAccessTokenJson(kakaoCode)
                 .flatMap(this::extractAccessToken)
                 .flatMap(this::fetchKakaoUserInfo)
                 .flatMap(this::findOrCreateUser)
@@ -90,7 +90,7 @@ public class KakaoAuthService {
      * 1) 인가 코드로 카카오 액세스 토큰(JSON) 얻기
      */
 
-    private Mono<JsonNode> getAccessTokenJson(String code) {
+    private Mono<JsonNode> getAccessTokenJson(String kakaoCode) {
 
         return webClient.post()
                 .uri(TOKEN_URI)
@@ -98,7 +98,7 @@ public class KakaoAuthService {
                 .body(BodyInserters.fromFormData("grant_type", "authorization_code")
                         .with("client_id", restApiKey)
                         .with("redirect_uri", callbackUrl)
-                        .with("code", code)
+                        .with("code", kakaoCode)
                         .with("client_secret", clientSecret)
                 )
                 .retrieve()

@@ -34,13 +34,18 @@ public class OnboardingService {
                 );
     }
 
-    private Mono<Integer> extractUserId(String accessToken) {
-        if (accessToken == null || !accessToken.startsWith("Bearer ")) {
+    private Mono<Integer> extractUserId(String authorizationHeader) {
+        if (authorizationHeader == null || authorizationHeader.isBlank()) {
             return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "JWT 토큰이 필요합니다."));
         }
-        String token = accessToken.substring("Bearer ".length());
+
+        if (!authorizationHeader.startsWith("Bearer ")){
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "잘못된 인증 방식입니다."));
+        }
+
+        String token = authorizationHeader.substring("Bearer ".length());
         return jwtProvider.getUserIdFromToken(token);
-    }
+     }
 
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {
         int bitmask = user.getOnboardingStepsBitmask();

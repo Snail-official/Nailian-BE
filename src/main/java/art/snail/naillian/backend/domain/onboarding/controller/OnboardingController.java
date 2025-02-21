@@ -19,7 +19,7 @@ public class OnboardingController {
 
     @GetMapping("/onboarding-status")
     public Mono<OnboardingStatusResponse> getOnboardingStatus(
-            @RequestHeader("AccessToken") String accessToken,
+            @RequestHeader("Authorization") String accessToken,
             @RequestParam(name = "maxSupportedVersion", required = false, defaultValue = "1") int maxSupportedVersion
     ) {
         return onboardingService.getNextOnboardingStep(accessToken, maxSupportedVersion);

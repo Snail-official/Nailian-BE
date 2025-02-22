@@ -8,17 +8,17 @@ import lombok.Getter;
 @Getter
 @Builder
 public class UserResponseDTO {
-    private Integer userId;
+    private Integer id;
     private String nickname;
-    private String profileImageUrl;
-    private LocalDateTime createdAt;
+    private String profileImage;
+    private Integer onboardingProgress;
 
-    public static UserResponseDTO from(User user){
-        return UserResponseDTO.builder()
-                .userId(user.getId())
-                .nickname(user.getNickname())
-                .profileImageUrl(user.getProfileImageUrl())
-                .createdAt(user.getCreatedAt())
-                .build();
+    public static UserResponseDTO from(User user) {
+        return new UserResponseDTO(
+                user.getId(),
+                user.getNickname(),
+                user.getProfileImageUrl(),
+                user.getOnboardingStepsBitmask() == 0x03 ? 1 : 0
+        );
     }
 }

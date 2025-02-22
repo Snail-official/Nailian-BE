@@ -26,7 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final AuthenticationService authenticationService;
 
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣a-zA-Z0-9]{2,8}$");
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
     private static  final int ONBOARDING_NICKNAME_FLAG = 0x01;
 

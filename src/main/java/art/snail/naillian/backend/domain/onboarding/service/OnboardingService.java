@@ -56,6 +56,6 @@ public class OnboardingService {
         if ((bitmask & STEP_PREFERENCES) == 0 && maxSupportedVersion >= 2) {
             return OnboardingStep.ONBOARDING_PREFERENCES;
         }
-        throw new ReportableError(HttpStatus.BAD_REQUEST, "이미 모든 온보딩을 완료했습니다.");
+        throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
     }
 }

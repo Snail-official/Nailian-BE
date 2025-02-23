@@ -54,7 +54,7 @@ public class GlobalErrorWebExceptionHandler extends AbstractErrorWebExceptionHan
             if (rawCode != null) {
                 code = HttpStatusCode.valueOf(rawCode);
             }
-        } catch (AssertionError ignored) {
+        } catch (Throwable ignored) {
             // code 가 엉뚱한 값이 들어오면 무시하고 기본값을 사용함
         }
 

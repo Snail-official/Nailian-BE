@@ -31,13 +31,9 @@ public class PageDTO<T> extends PageImpl<T> {
 
             gen.writeFieldName("content");
             gen.writeStartArray();
-            page.getContent().forEach(content -> {
-                try {
-                    gen.writeObject(content);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            for (Object content : page.getContent()) {
+                gen.writeObject(content);
+            }
             gen.writeEndArray();
 
             gen.writeEndObject();

@@ -16,7 +16,9 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.server.*;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 전역에서 발생하는 오류를 커스텀하고 ServerResponse 를 생성하는 Handler
@@ -48,14 +50,43 @@ public class GlobalErrorWebExceptionHandler extends AbstractErrorWebExceptionHan
     private Mono<ServerResponse> renderErrorResponse(ServerRequest request) {
         Map<String, Object> errorProperties = getErrorAttributes(request, ErrorAttributeOptions.defaults());
 
+        Object rawCode = null;
+        String message = null;
+
+        if (errorProperties.containsKey("code")) {
+            rawCode = errorProperties.get("code");
+        } else if (errorProperties.containsKey("status")) {
+            rawCode = errorProperties.remove("status");
+        }
+        if (errorProperties.containsKey("error")) {
+            message = errorProperties.remove("error").toString();
+        }
+
         HttpStatusCode code = DEFAULT_CODE;
-        try {
-            Integer rawCode = (Integer) errorProperties.get("code");
-            if (rawCode != null) {
-                code = HttpStatusCode.valueOf(rawCode);
+        if (rawCode != null) {
+            if (rawCode instanceof Number) {
+                code = HttpStatus.valueOf((Integer) rawCode);
+            } else if (rawCode instanceof HttpStatusCode) {
+                code = (HttpStatusCode) rawCode;
             }
-        } catch (Throwable ignored) {
-            // code 가 엉뚱한 값이 들어오면 무시하고 기본값을 사용함
+        }
+
+        Optional<Object> exception = request.attribute("ExceptionHandlingWebHandler.handledException");
+        if (exception.isPresent()) {
+            Throwable handledException = (Throwable) exception.get();
+
+            if (!(handledException instanceof ReportableError)) {
+                String exceptionMessage = handledException.getMessage();
+                if (exceptionMessage != null && !exceptionMessage.isEmpty()) {
+                    message = exceptionMessage;
+                }
+
+                Map<String, Object> originalProperties = errorProperties;
+                errorProperties = new HashMap<>();
+                errorProperties.put("code", code.value());
+                errorProperties.put("message", message);
+                errorProperties.put("error", originalProperties);
+            }
         }
 
         return ServerResponse.status(code)

@@ -5,14 +5,15 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import io.micrometer.common.lang.Nullable;
-import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.UUID;
-import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtProvider {
@@ -67,6 +68,11 @@ public class JwtProvider {
                     return Integer.parseInt(userIdStr);
                 })
                 .onErrorMap(e -> new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 인증 정보입니다.", 401));
+    }
+
+    public Mono<UserAuthByTokenPayload> authUserByToken(String token) {
+        return getUserIdFromToken(token)
+                .map(userId -> new UserAuthByTokenPayload(userId, "accessToken", token));
     }
 
 }

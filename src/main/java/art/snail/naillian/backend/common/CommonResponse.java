@@ -31,13 +31,12 @@ public class CommonResponse<T> {
                 .build();
     }
 
-    public static @NonNull CommonResponse<?> fail(HttpStatusCode code, String message) {
-        return CommonResponse.builder()
+    public static <T> @NonNull CommonResponse<T> fail(HttpStatusCode code, String message) {
+        return CommonResponse.<T>builder()
                 .code(code.value())
                 .msg(message)
                 .build();
     }
-
     @JsonComponent
     static class Serializer extends JsonSerializer<CommonResponse<?>> {
         @Override

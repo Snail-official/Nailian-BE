@@ -7,6 +7,7 @@ import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +20,7 @@ public class NailController {
     private final NailService nailService;
 
     @GetMapping("/")
-    public Mono<CommonResponse<Iterable<NailIdAndUrlDTO>>> getNails(Pageable page) {
+    public Mono<CommonResponse<Page<NailIdAndUrlDTO>>> getNails(Pageable page) {
         return nailService.getNailTips(page)
                 .map(NailIdAndUrlDTO::from)
                 .collectList()

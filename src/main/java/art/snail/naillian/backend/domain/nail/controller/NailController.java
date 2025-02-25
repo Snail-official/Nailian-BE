@@ -24,7 +24,7 @@ public class NailController {
                 .map(NailIdAndUrlDTO::from)
                 .collectList()
                 .map(list -> new PageDTO<>(list, page, list.size()))
-                .map(CommonResponse::success);
+                .map(data -> CommonResponse.success(data));
     }
 
     @GetMapping("/preferences")

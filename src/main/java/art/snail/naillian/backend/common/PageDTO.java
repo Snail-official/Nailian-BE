@@ -29,7 +29,6 @@ public class PageDTO<T> extends PageImpl<T> {
                 gen.writeFieldName("pageInfo");
                 gen.writeStartObject();
                 gen.writeNumberField("currentPage", page.getNumber());
-                gen.writeNumberField("size", page.getSize());
                 gen.writeNumberField("totalElements", page.getTotalElements());
                 gen.writeNumberField("totalPages", page.getTotalPages());
                 gen.writeEndObject();

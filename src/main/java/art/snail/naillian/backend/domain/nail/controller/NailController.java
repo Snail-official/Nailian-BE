@@ -26,4 +26,19 @@ public class NailController {
                 .map(list -> new PageDTO<>(list, page, list.size()))
                 .map(CommonResponse::success);
     }
+
+    @GetMapping("/preferences")
+    public Mono<CommonResponse<Iterable<NailIdAndUrlDTO>>> getNailsInPreferences(
+            @RequestHeader("Authorization") String authToken
+    ) {
+        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
+
+    @PostMapping("/preferences")
+    public Mono<CommonResponse<String>> saveNailPreferences(
+            @RequestHeader("Authorization") String authToken,
+            @RequestBody SaveNailPreferencesDTO dto
+    ) {
+        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
 }

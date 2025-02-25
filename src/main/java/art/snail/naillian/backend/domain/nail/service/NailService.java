@@ -26,6 +26,10 @@ public class NailService {
         return assetRepository.findAllBy(page);
     }
 
+    public Flux<NailTip> getNailTips(Pageable page) {
+        return tipRepository.findAllBy(page);
+    }
+
     public Flux<NailSet> getNailSets(Pageable page) {
         return setRepository.findAllBy(page);
     }

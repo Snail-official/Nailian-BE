@@ -20,11 +20,11 @@ public class NailController {
 
     @GetMapping("/")
     public Mono<CommonResponse<Iterable<NailIdAndUrlDTO>>> getNails(Pageable page) {
-        return nailService.getNailAssets(page)
+        return nailService.getNailTips(page)
                 .map(NailIdAndUrlDTO::from)
                 .collectList()
                 .map(list -> new PageDTO<>(list, page, list.size()))
-                .map(data -> CommonResponse.success(data));
+                .map(CommonResponse::success);
     }
 
     @GetMapping("/preferences")

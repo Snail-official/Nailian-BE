@@ -3,14 +3,14 @@ package art.snail.naillian.backend.domain.nail.controller;
 import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -31,4 +31,26 @@ public class NailSetController {
                 .map(CommonResponse::success);
     }
 
+    @GetMapping("/{id}/similar")
+    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetSimilar(
+            @PathVariable("id") Long id,
+            @RequestParam("style") int style,
+            Pageable page
+    ) {
+        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
+
+    @GetMapping("/recommendations")
+    public Mono<CommonResponse<Iterable<NailSetRecommendationDTO>>> getNailSetRecommendations(
+            @RequestHeader("Authorization") String authToken
+    ) {
+        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
+
+    @GetMapping("/feed")
+    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(
+            @RequestParam("style") int style
+    ) {
+        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
 }

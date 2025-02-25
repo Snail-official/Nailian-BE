@@ -24,17 +24,25 @@ public class PageDTO<T> extends PageImpl<T> {
         public void serialize(PageDTO page, JsonGenerator gen, SerializerProvider serializerProvider) throws IOException {
             gen.writeStartObject();
 
-            gen.writeNumberField("page", page.getNumber());
-            gen.writeNumberField("size", page.getSize());
-            gen.writeNumberField("totalElements", page.getTotalElements());
-            gen.writeNumberField("totalPages", page.getTotalPages());
-
-            gen.writeFieldName("content");
-            gen.writeStartArray();
-            for (Object content : page.getContent()) {
-                gen.writeObject(content);
+            // pageInfo
+            {
+                gen.writeFieldName("pageInfo");
+                gen.writeStartObject();
+                gen.writeNumberField("currentPage", page.getNumber());
+                gen.writeNumberField("totalElements", page.getTotalElements());
+                gen.writeNumberField("totalPages", page.getTotalPages());
+                gen.writeEndObject();
             }
-            gen.writeEndArray();
+
+            // content[]
+            {
+                gen.writeFieldName("content");
+                gen.writeStartArray();
+                for (Object content : page.getContent()) {
+                    gen.writeObject(content);
+                }
+                gen.writeEndArray();
+            }
 
             gen.writeEndObject();
         }

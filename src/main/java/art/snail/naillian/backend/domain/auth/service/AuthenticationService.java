@@ -24,9 +24,8 @@ public class AuthenticationService {
 
 
     /** Access Token 검증 및 사용자 ID 추출 */
-    public Mono<Integer> extractUserIdFromToken(String authorizationHeader) {
-        return Mono.justOrEmpty(authorizationHeader)
-                .map(this::parseToken)
+    public Mono<Integer> extractUserIdFromToken(String accessToken) {
+        return Mono.justOrEmpty(accessToken)
                 .flatMap(jwtProvider::getUserIdFromToken)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED ,"유효하지 않은 인증 정보입니다.")));
     }

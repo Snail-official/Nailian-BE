@@ -26,8 +26,13 @@ public class CommonResponse<T> {
     private T data = null;
 
     public static <T> @NonNull CommonResponse<T> success(T data) {
+        return success(data, "");
+    }
+
+    public static <T> @NonNull CommonResponse<T> success(T data, String message) {
         return CommonResponse.<T>builder()
                 .data(data)
+                .msg(message)
                 .build();
     }
 

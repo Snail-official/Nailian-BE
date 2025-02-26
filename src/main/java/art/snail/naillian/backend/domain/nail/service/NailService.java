@@ -8,11 +8,17 @@ import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
+import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -45,13 +51,21 @@ public class NailService {
     public Flux<NailTip> getNailsBySetId(Long setId) {
         return this.getNailSet(setId)
                 .flatMap(nailSet -> groupRepository.findById(nailSet.getNailGroupId()))
-                .flatMapMany(nailGroup -> Flux.just(
-                        nailGroup.getFingerThumb(),
-                        nailGroup.getFingerIndex(),
-                        nailGroup.getFingerMiddle(),
-                        nailGroup.getFingerRing(),
-                        nailGroup.getFingerPinky()
-                ))
+                .flatMapMany(nailGroup -> {
+                    List<Long> ids = Stream.of(
+                            nailGroup.getFingerThumb(),
+                            nailGroup.getFingerIndex(),
+                            nailGroup.getFingerMiddle(),
+                            nailGroup.getFingerRing(),
+                            nailGroup.getFingerPinky()
+                    ).filter(Objects::nonNull).toList();
+
+                    if (ids.size() != 5)
+                        return Flux.error(new ReportableError(HttpStatus.BAD_GATEWAY, String.format(
+                                "네일 그룹이 올바르게 구성되지 않았습니다. (크기: %s)", ids.size()
+                        )));
+                    return Flux.fromIterable(ids);
+                })
                 .flatMapSequential(assetId -> tipRepository.findById(assetId.intValue()));
     }
 }

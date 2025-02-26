@@ -1,5 +1,7 @@
 package art.snail.naillian.backend.domain.nail.entity;
 
+import art.snail.naillian.backend.domain.nail.common.NailAssetType;
+import art.snail.naillian.backend.domain.nail.common.NailShape;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,19 +10,20 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
-@Table("nail_set")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class NailSet {
+@AllArgsConstructor
+@Table("nail_assets")
+public class NailAssets {
     @Id
-    private Long id;
+    private Integer id;
 
-    private Long nailGroupId;
+    private NailShape shape;
+    private NailAssetType assetType;
 
-    private String name;
-    private Long uploadedBy;
-
+    private String imageUrl;
+    private Integer uploadedBy;
+    private Boolean isDownloaded;
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
 }

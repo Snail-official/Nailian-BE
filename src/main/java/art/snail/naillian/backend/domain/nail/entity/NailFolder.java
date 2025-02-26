@@ -8,19 +8,16 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
-@Table("nail_set")
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
-public class NailSet {
+@AllArgsConstructor
+@Table("nail_folder")
+public class NailFolder {
     @Id
-    private Long id;
-
-    private Long nailGroupId;
+    private Integer id;
 
     private String name;
-    private Long uploadedBy;
-
     private LocalDateTime createdAt;
-    private LocalDateTime deletedAt;
+    private LocalDateTime updatedAt;
 }
+

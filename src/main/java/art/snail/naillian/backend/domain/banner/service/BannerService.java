@@ -28,9 +28,6 @@ public class BannerService {
 
     public Mono<CommonResponse<List<BannerResponse>>> getHomeBannersResponse() {
         return getHomeBanners()
-                .map(list -> CommonResponse.<List<BannerResponse>>success(list))
-                .onErrorResume(ReportableError.class, error ->
-                        Mono.just(CommonResponse.fail(error.getStatus(), error.getMessage()))
-                );
+                .map(list -> CommonResponse.<List<BannerResponse>>success(list));
     }
 }

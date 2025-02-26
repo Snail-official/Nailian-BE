@@ -14,7 +14,6 @@ public class UserAuthByTokenPayload extends AbstractAuthenticationToken {
         this.userId = userId;
         this.tokenType = tokenType;
         this.accessToken = accessToken;
-        super.setAuthenticated(true);
     }
 
     @Override

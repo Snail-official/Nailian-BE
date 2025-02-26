@@ -72,7 +72,8 @@ public class JwtProvider {
 
     public Mono<UserAuthByTokenPayload> authUserByToken(String token) {
         return getUserIdFromToken(token)
-                .map(userId -> new UserAuthByTokenPayload(userId, "accessToken", token));
+                .map(userId -> new UserAuthByTokenPayload(userId, "accessToken", token))
+                .doOnNext(payload -> payload.setAuthenticated(true));
     }
 
 }

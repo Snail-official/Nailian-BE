@@ -9,8 +9,6 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-import java.util.Objects;
-
 
 @Component
 @RequiredArgsConstructor
@@ -31,12 +29,13 @@ public class JwtAuthFilter implements WebFilter {
     }
 
     @Override
+    @SuppressWarnings("all")
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         return Mono.justOrEmpty(exchange)
                 .flatMap(JwtAuthFilter::extractToken)
                 .flatMap(JwtAuthFilter::extractTokenFromHeader)
-                .filter(Objects::nonNull)
                 .flatMap(jwtProvider::authUserByToken)
-                .flatMap(payload -> chain.filter(exchange).contextWrite(ReactiveSecurityContextHolder.withAuthentication(payload)));
+                .flatMap(payload -> chain.filter(exchange).contextWrite(ReactiveSecurityContextHolder.withAuthentication(payload)))
+                .switchIfEmpty(chain.filter(exchange));
     }
 }

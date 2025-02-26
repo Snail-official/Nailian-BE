@@ -22,10 +22,10 @@ public class JwtAuthFilter implements WebFilter {
     }
 
     private static Mono<String> extractTokenFromHeader(String headerValue) {
-        if (headerValue == null) return null;
+        if (headerValue == null) return Mono.empty();
 
         int index = headerValue.indexOf(" ");
-        if (index == -1) return null;
+        if (index == -1) return Mono.empty();
 
         return Mono.just(headerValue.substring(index + 1));
     }

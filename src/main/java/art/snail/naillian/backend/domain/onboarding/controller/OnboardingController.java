@@ -17,11 +17,10 @@ public class OnboardingController {
 
     private final OnboardingService onboardingService;
 
-    @GetMapping("/onboarding-status")
+    @GetMapping("/status")
     public Mono<OnboardingStatusResponse> getOnboardingStatus(
-            @RequestHeader("Authorization") String accessToken,
             @RequestParam(name = "maxSupportedVersion", required = false, defaultValue = "1") int maxSupportedVersion
     ) {
-        return onboardingService.getNextOnboardingStep(accessToken, maxSupportedVersion);
+        return onboardingService.getNextOnboardingStep(maxSupportedVersion);
     }
 }

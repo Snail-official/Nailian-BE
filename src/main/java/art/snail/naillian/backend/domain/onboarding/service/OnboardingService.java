@@ -34,20 +34,15 @@ public class OnboardingService {
 
 
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {
-        if (needsNickname(user) && maxSupportedVersion >= 1) {
-            return OnboardingStep.OnboardingNickname;
+        for (OnboardingStep step : OnboardingStep.values()) {
+            if (maxSupportedVersion >= step.getRequiredVersion() && need(user, step))
+                return step;
         }
-        if (needsPreferences(user) && maxSupportedVersion >= 2) {
-            return OnboardingStep.OnboardingPreferences;
-        }
+
         throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
     }
 
-    private boolean needsNickname(User user) {
-        return (user.getOnboardingStepsBitmask() & STEP_NICKNAME) == 0;
-    }
-
-    private boolean needsPreferences(User user) {
-        return (user.getOnboardingStepsBitmask() & STEP_PREFERENCES) == 0;
+    private boolean need(User user, OnboardingStep step) {
+        return 0 == (user.getOnboardingStepsBitmask() & step.getBitmask());
     }
 }

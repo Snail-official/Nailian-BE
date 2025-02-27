@@ -4,6 +4,7 @@ import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
+import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,10 @@ public class UserService {
                 .map(UserResponseDTO::from)
                 .map(userResponse -> CommonResponse.success(userResponse, "사용자 정보 조회 성공"))
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")));
+    }
+
+    public Mono<User> getUserById(int userId) {
+        return userRepository.findById(userId);
     }
 
     /**

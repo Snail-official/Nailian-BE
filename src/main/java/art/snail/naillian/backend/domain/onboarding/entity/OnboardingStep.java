@@ -19,6 +19,16 @@ public enum OnboardingStep {
     private final int bitmask;
     private final int requiredVersion;
 
+    public static final int ALL_STEP_BITS;
+
+    static {
+        int bit = 0;
+        for (OnboardingStep step : OnboardingStep.values()) {
+            bit |= step.bitmask;
+        }
+        ALL_STEP_BITS = bit;
+    }
+
     OnboardingStep(int order, int requiredVersion) {
         this.bitmask = 1 << order;
         this.requiredVersion = requiredVersion;

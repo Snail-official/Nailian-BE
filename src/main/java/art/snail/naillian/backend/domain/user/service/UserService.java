@@ -2,7 +2,8 @@ package art.snail.naillian.backend.domain.user.service;
 
 import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
-import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
+import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
+import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
@@ -12,13 +13,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
-
     private final UserRepository userRepository;
+    private final OnboardingService onboardingService;
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
@@ -68,11 +70,8 @@ public class UserService {
                                 .switchIfEmpty(Mono.just(user))
                 )
                 .flatMap(user -> {
-                    boolean isOnboarding = (user.getNickname() == null || user.getNickname().isBlank());
                     user.setNickname(newNickname);
-                    if (isOnboarding && (user.getOnboardingStepsBitmask() & ONBOARDING_NICKNAME_FLAG) == 0) {
-                        user.setOnboardingStepsBitmask(user.getOnboardingStepsBitmask() | ONBOARDING_NICKNAME_FLAG);
-                    }
+                    boolean isOnboarding = onboardingService.markOnboardingComplete(user, OnboardingStep.NICKNAME);
                     return userRepository.save(user)
                             .map(updatedUser -> {
                                 String message = isOnboarding

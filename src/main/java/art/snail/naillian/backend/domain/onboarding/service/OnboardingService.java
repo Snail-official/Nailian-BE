@@ -42,7 +42,20 @@ public class OnboardingService {
         throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
     }
 
-    private boolean need(User user, OnboardingStep step) {
+    public boolean needsOnboarding(User user, OnboardingStep step) {
         return 0 == (user.getOnboardingStepsBitmask() & step.getBitmask());
+    }
+
+    /**
+     * User entity 의 bitmask 를 수정하고 수정했는지 여부를 반환합니다.
+     *
+     * @return 비트마스크를 변경한 경우 true, 원래 해당 온보딩을 진행해서 비트마스크에 변화가 없으면 false
+     */
+    public boolean markOnboardingComplete(User user, OnboardingStep step) {
+        if (!needsOnboarding(user, step))
+            return false;
+
+        user.setOnboardingStepsBitmask(user.getOnboardingStepsBitmask() | step.getBitmask());
+        return true;
     }
 }

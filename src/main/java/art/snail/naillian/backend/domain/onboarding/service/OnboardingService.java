@@ -35,28 +35,21 @@ public class OnboardingService {
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")));
     }
 
-    private Mono<Integer> extractUserId(String authorizationHeader) {
-        if (authorizationHeader == null || authorizationHeader.isBlank()) {
-            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "JWT 토큰이 필요합니다."));
-        }
-
-        if (!authorizationHeader.startsWith("Bearer ")){
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "잘못된 인증 방식입니다."));
-        }
-
-        String token = authorizationHeader.substring("Bearer ".length());
-        return jwtProvider.getUserIdFromToken(token);
-     }
-
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {
-        int bitmask = user.getOnboardingStepsBitmask();
-
-        if ((bitmask & STEP_NICKNAME) == 0 && maxSupportedVersion >= 1) {
+        if (needsNickname(user) && maxSupportedVersion >= 1) {
             return OnboardingStep.OnboardingNickname;
         }
-        if ((bitmask & STEP_PREFERENCES) == 0 && maxSupportedVersion >= 2) {
+        if (needsPreferences(user) && maxSupportedVersion >= 2) {
             return OnboardingStep.OnboardingPreferences;
         }
         throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
+    }
+
+    private boolean needsNickname(User user) {
+        return (user.getOnboardingStepsBitmask() & STEP_NICKNAME) == 0;
+    }
+
+    private boolean needsPreferences(User user) {
+        return (user.getOnboardingStepsBitmask() & STEP_PREFERENCES) == 0;
     }
 }

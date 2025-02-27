@@ -40,10 +40,10 @@ public class OnboardingService {
         int bitmask = user.getOnboardingStepsBitmask();
 
         if ((bitmask & STEP_NICKNAME) == 0 && maxSupportedVersion >= 1) {
-            return OnboardingStep.ONBOARDING_NICKNAME;
+            return OnboardingStep.OnboardingNickname;
         }
         if ((bitmask & STEP_PREFERENCES) == 0 && maxSupportedVersion >= 2) {
-            return OnboardingStep.ONBOARDING_PREFERENCES;
+            return OnboardingStep.OnboardingPreferences;
         }
         throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
     }

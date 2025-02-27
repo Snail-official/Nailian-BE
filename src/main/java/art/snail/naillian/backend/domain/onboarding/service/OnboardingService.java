@@ -1,10 +1,8 @@
 package art.snail.naillian.backend.domain.onboarding.service;
 
-import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
-import art.snail.naillian.backend.domain.onboarding.dto.OnboardingStatusResponse;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.user.entity.User;
-import art.snail.naillian.backend.domain.user.repository.UserRepository;
+import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,48 +12,41 @@ import reactor.core.publisher.Mono;
 @Service
 @RequiredArgsConstructor
 public class OnboardingService {
-    private final UserRepository userRepository;
-    private final JwtProvider jwtProvider;
-
-    private static final int STEP_NICKNAME = 0x01;
-    private static final int STEP_PREFERENCES = 0x02;
-
+    private final UserService userService;
     /**
      * 유저 ID를 받아 다음 온보딩 스텝 결정
      * DB에서 유저 조회
      * 비트마스크 분석 후 다음 스텝 결정
      */
-    public Mono<OnboardingStatusResponse> getNextOnboardingStep(String accessToken, int maxSupportedVersion) {
-        return extractUserId(accessToken)
-                .flatMap(userId -> userRepository.findById(userId)
-                        .map(user -> calculateNextStep(user, maxSupportedVersion))
-                        .map(step -> OnboardingStatusResponse.success(step.name()))
-                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")))
-                );
+    public Mono<OnboardingStep> getNextOnboardingStep(int userId, int maxSupportedVersion) {
+        return userService.getUserById(userId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")))
+                .map(user -> calculateNextStep(user, maxSupportedVersion));
     }
 
-    private Mono<Integer> extractUserId(String authorizationHeader) {
-        if (authorizationHeader == null || authorizationHeader.isBlank()) {
-            return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "JWT 토큰이 필요합니다."));
-        }
-
-        if (!authorizationHeader.startsWith("Bearer ")){
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "잘못된 인증 방식입니다."));
-        }
-
-        String token = authorizationHeader.substring("Bearer ".length());
-        return jwtProvider.getUserIdFromToken(token);
-     }
-
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {
-        int bitmask = user.getOnboardingStepsBitmask();
+        for (OnboardingStep step : OnboardingStep.values()) {
+            if (maxSupportedVersion >= step.getRequiredVersion() && needsOnboarding(user, step))
+                return step;
+        }
 
-        if ((bitmask & STEP_NICKNAME) == 0 && maxSupportedVersion >= 1) {
-            return OnboardingStep.ONBOARDING_NICKNAME;
-        }
-        if ((bitmask & STEP_PREFERENCES) == 0 && maxSupportedVersion >= 2) {
-            return OnboardingStep.ONBOARDING_PREFERENCES;
-        }
         throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
+    }
+
+    public static boolean needsOnboarding(User user, OnboardingStep step) {
+        return 0 == (user.getOnboardingStepsBitmask() & step.getBitmask());
+    }
+
+    /**
+     * User entity 의 bitmask 를 수정하고 수정했는지 여부를 반환합니다.
+     *
+     * @return 비트마스크를 변경한 경우 true, 원래 해당 온보딩을 진행해서 비트마스크에 변화가 없으면 false
+     */
+    public static boolean markOnboardingComplete(User user, OnboardingStep step) {
+        if (!needsOnboarding(user, step))
+            return false;
+
+        user.setOnboardingStepsBitmask(user.getOnboardingStepsBitmask() | step.getBitmask());
+        return true;
     }
 }

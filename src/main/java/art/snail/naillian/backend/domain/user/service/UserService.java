@@ -43,17 +43,24 @@ public class UserService {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "닉네임은 한글, 영문, 숫자만 사용 가능하며 2~8자로 입력해야 합니다."));
         }
 
-        return Mono.just(newNickname)
-                .flatMap(this::getUserByNickname)
-                .flatMap(existingUser -> {
-                    if (existingUser.getId() != userId)
+        return Mono.zip(
+                        this.getUserById(userId),
+                        this.getUserByNickname(newNickname)
+                                .map(Optional::of)
+                                .defaultIfEmpty(Optional.empty())
+                )
+                .flatMap(tuple -> {
+                    User user = tuple.getT1();
+                    Optional<User> existingUser = tuple.getT2();
+
+                    if (existingUser.isPresent() && existingUser.get().getId() != userId)
                         return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 사용 중인 닉네임입니다."));
-                    return getUserById(userId)
-                            .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자 정보를 찾을 수 없습니다.")));
+
+                    return Mono.just(user);
                 })
                 .flatMap(user -> {
                     user.setNickname(newNickname);
-                    String message = onboardingService.markOnboardingComplete(user, OnboardingStep.NICKNAME)
+                    String message = OnboardingService.markOnboardingComplete(user, OnboardingStep.NICKNAME)
                             ? "닉네임이 성공적으로 저장되었습니다. (온보딩 완료)"
                             : "닉네임이 변경되었습니다.";
 

@@ -17,7 +17,7 @@ public class OnboardingController {
 
     private final OnboardingService onboardingService;
 
-    @GetMapping("/status")
+    @GetMapping("/onboarding-status")
     public Mono<OnboardingStatusResponse> getOnboardingStatus(
             @RequestParam(name = "maxSupportedVersion", required = false, defaultValue = "1") int maxSupportedVersion
     ) {

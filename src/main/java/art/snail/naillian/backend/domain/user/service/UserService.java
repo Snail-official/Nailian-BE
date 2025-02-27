@@ -9,14 +9,9 @@ import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
-
-import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 @Service
@@ -24,7 +19,6 @@ import java.util.regex.Pattern;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final AuthenticationService authenticationService;
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
@@ -62,20 +56,30 @@ public class UserService {
                 .map(ctx -> (UserAuthByTokenPayload) ctx.getAuthentication())
                 .flatMap(userAuth -> userRepository.findById(userAuth.getUserId()))
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자 정보를 찾을 수 없습니다.")))
+                .flatMap(user ->
+                        // 닉네임 중복 체크: 동일한 닉네임이 다른 사용자에게 이미 사용 중인지 확인
+                        userRepository.findByNickname(newNickname)
+                                .flatMap(existingUser -> {
+                                    if (existingUser.getId() != user.getId()) {
+                                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 사용 중인 닉네임입니다."));
+                                    }
+                                    return Mono.just(user);
+                                })
+                                .switchIfEmpty(Mono.just(user))
+                )
                 .flatMap(user -> {
                     boolean isOnboarding = (user.getNickname() == null || user.getNickname().isBlank());
-
                     user.setNickname(newNickname);
                     if (isOnboarding && (user.getOnboardingStepsBitmask() & ONBOARDING_NICKNAME_FLAG) == 0) {
                         user.setOnboardingStepsBitmask(user.getOnboardingStepsBitmask() | ONBOARDING_NICKNAME_FLAG);
-                }
-                return userRepository.save(user)
-                        .map(updatedUser -> {
-                            String message = isOnboarding
-                                    ? "닉네임이 성공적으로 저장되었습니다. (온보딩 완료)"
-                                    : "닉네임이 변경되었습니다.";
-                            return CommonResponse.success(UserResponseDTO.from(updatedUser), message);
-                        });
+                    }
+                    return userRepository.save(user)
+                            .map(updatedUser -> {
+                                String message = isOnboarding
+                                        ? "닉네임이 성공적으로 저장되었습니다. (온보딩 완료)"
+                                        : "닉네임이 변경되었습니다.";
+                                return CommonResponse.success(UserResponseDTO.from(updatedUser), message);
+                            });
                 });
     }
 }

@@ -6,6 +6,7 @@ import art.snail.naillian.backend.domain.onboarding.dto.OnboardingStatusResponse
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
+import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,8 +17,7 @@ import reactor.core.publisher.Mono;
 @Service
 @RequiredArgsConstructor
 public class OnboardingService {
-    private final UserRepository userRepository;
-    private final JwtProvider jwtProvider;
+    private final UserService userService;
 
     private static final int STEP_NICKNAME = 0x01;
     private static final int STEP_PREFERENCES = 0x02;
@@ -27,15 +27,13 @@ public class OnboardingService {
      * DB에서 유저 조회
      * 비트마스크 분석 후 다음 스텝 결정
      */
-    public Mono<OnboardingStatusResponse> getNextOnboardingStep(int maxSupportedVersion) {
-        return ReactiveSecurityContextHolder.getContext()
-                .map(securityContext -> (UserAuthByTokenPayload) securityContext.getAuthentication())
-                .flatMap(userAuth ->
-                        userRepository.findById(userAuth.getUserId())
-                                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")))
-                )
-                .map(user -> calculateNextStep(user, maxSupportedVersion))
-                .map(nextStep -> OnboardingStatusResponse.success(nextStep.name()));
+    public Mono<OnboardingStatusResponse> getNextOnboardingStep(int userId, int maxSupportedVersion) {
+        return userService.getUserById(userId)
+                .flatMap(user -> {
+                    OnboardingStep nextStep = calculateNextStep(user, maxSupportedVersion);
+                    return Mono.just(OnboardingStatusResponse.success(nextStep.name()));
+                })
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")));
     }
 
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {

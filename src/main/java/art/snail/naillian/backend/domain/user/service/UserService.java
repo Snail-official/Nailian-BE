@@ -21,8 +21,6 @@ public class UserService {
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
-    private static final int ONBOARDING_NICKNAME_FLAG = 0x01;
-
     /**
      * 기존 회원 정보 불러오기
      */

@@ -9,10 +9,14 @@ import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Service
@@ -38,9 +42,11 @@ public class UserService {
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")));
     }
 
-    public Mono<User> getUserById(int userId) {
-        return userRepository.findById(userId);
+    public Mono<User> getUserById(int id) {
+        return userRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")));
     }
+
 
     /**
      * 닉네임 변경 (온보딩 여부에 따라 처리)
@@ -52,7 +58,6 @@ public class UserService {
         if (!NICKNAME_PATTERN.matcher(newNickname).matches()) {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "닉네임은 한글, 영문, 숫자만 사용 가능하며 2~8자로 입력해야 합니다."));
         }
-
         return ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> (UserAuthByTokenPayload) ctx.getAuthentication())
                 .flatMap(userAuth -> userRepository.findById(userAuth.getUserId()))
@@ -63,15 +68,14 @@ public class UserService {
                     user.setNickname(newNickname);
                     if (isOnboarding && (user.getOnboardingStepsBitmask() & ONBOARDING_NICKNAME_FLAG) == 0) {
                         user.setOnboardingStepsBitmask(user.getOnboardingStepsBitmask() | ONBOARDING_NICKNAME_FLAG);
-                    }
-
-                    return userRepository.save(user)
-                            .map(updatedUser -> {
-                                String message = isOnboarding
-                                        ? "닉네임이 성공적으로 저장되었습니다. (온보딩 완료)"
-                                        : "닉네임이 변경되었습니다.";
-                                return CommonResponse.success(UserResponseDTO.from(updatedUser), message);
-                            });
+                }
+                return userRepository.save(user)
+                        .map(updatedUser -> {
+                            String message = isOnboarding
+                                    ? "닉네임이 성공적으로 저장되었습니다. (온보딩 완료)"
+                                    : "닉네임이 변경되었습니다.";
+                            return CommonResponse.success(UserResponseDTO.from(updatedUser), message);
+                        });
                 });
     }
 }

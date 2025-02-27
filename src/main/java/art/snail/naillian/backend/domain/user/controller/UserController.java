@@ -2,13 +2,15 @@ package art.snail.naillian.backend.domain.user.controller;
 
 
 import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
+import art.snail.naillian.backend.domain.user.dto.UserChangeNicknameDTO;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
 import art.snail.naillian.backend.domain.user.service.UserService;
+import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -18,13 +20,26 @@ public class UserController {
 
     /** 사용자 조회 */
     @GetMapping("/me")
-    public Mono<CommonResponse<UserResponseDTO>> getUserInfo() {
-        return userService.getUserInfo();
+    public Mono<CommonResponse<UserResponseDTO>> getUserInfo(
+            UserAuthByTokenPayload payload
+    ) {
+        return userService.getUserById(payload.getUserId())
+                .map(UserResponseDTO::from)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")))
+                .map(userResponse -> CommonResponse.success(userResponse, "사용자 정보 조회 성공"));
     }
 
     /** 닉네임 변경 (온보딩 여부 반영) */
     @PatchMapping("/me/nickname")
-    public Mono<CommonResponse<UserResponseDTO>> updateNickname(@RequestBody Map<String, String> requestBody){
-        return userService.updateNickname(requestBody.get("nickname"));
+    public Mono<CommonResponse<UserResponseDTO>> updateNickname(
+            UserAuthByTokenPayload payload,
+            @RequestBody UserChangeNicknameDTO requestBody
+    ) {
+        return userService.updateNickname(payload.getUserId(), requestBody.getNickname())
+                .flatMap(tuple -> {
+                    UserResponseDTO dto = UserResponseDTO.from(tuple.getT1());
+                    String message = tuple.getT2();
+                    return Mono.just(CommonResponse.success(dto, message));
+                });
     }
 }

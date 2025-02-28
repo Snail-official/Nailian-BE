@@ -1,5 +1,6 @@
 package art.snail.naillian.backend.domain.nail.service;
 
+import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
@@ -67,5 +68,15 @@ public class NailService {
                     return Flux.fromIterable(ids);
                 })
                 .flatMapSequential(tipRepository::findById);
+    }
+
+    public Mono<NailSetEmbedDTO<NailTip>> getNailSetWithNailTip(Integer setId) {
+        return getNailsBySetId(setId)
+                .collectList()
+                .map(nailTips -> new NailSetEmbedDTO<>(setId, nailTips));
+    }
+
+    public Flux<NailSet> getUserNailSets(Integer userId, Pageable page) {
+        return setRepository.findAllByUploadedBy(userId, page);
     }
 }

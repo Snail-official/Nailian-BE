@@ -1,13 +1,19 @@
 package art.snail.naillian.backend.domain.user.service;
 
+import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.entity.NailSet;
+import art.snail.naillian.backend.domain.nail.entity.NailTip;
+import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -20,6 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
+    private final NailService nailService;
 
     /**
      * 기존 회원 정보 불러오기
@@ -67,5 +74,11 @@ public class UserService {
                     return userRepository.save(user)
                             .zipWith(Mono.just(message));
                 });
+    }
+
+    public Flux<NailSetEmbedDTO<NailTip>> getUserNailSet(Integer userId, Pageable page) {
+        return nailService.getUserNailSets(userId, page)
+                .map(NailSet::getId)
+                .flatMap(nailService::getNailSetWithNailTip);
     }
 }

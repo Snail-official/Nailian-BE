@@ -14,12 +14,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class NailSet {
     @Id
-    private Long id;
+    private Integer id;
 
-    private Long nailGroupId;
+    private Integer nailGroupId;
 
     private String name;
-    private Long uploadedBy;
+    private Integer uploadedBy;
 
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;

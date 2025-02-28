@@ -12,11 +12,11 @@ import org.springframework.data.relational.core.mapping.Table;
 @NoArgsConstructor
 public class NailGroup {
     @Id
-    private Long id;
+    private Integer id;
 
-    private Long fingerThumb;
-    private Long fingerIndex;
-    private Long fingerMiddle;
-    private Long fingerRing;
-    private Long fingerPinky;
+    private Integer fingerThumb;
+    private Integer fingerIndex;
+    private Integer fingerMiddle;
+    private Integer fingerRing;
+    private Integer fingerPinky;
 }

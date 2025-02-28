@@ -17,6 +17,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -80,5 +81,10 @@ public class UserService {
         return nailService.getUserNailSets(userId, page)
                 .map(NailSet::getId)
                 .flatMap(nailService::getNailSetWithNailTip);
+    }
+
+    public Mono<NailSetEmbedDTO<NailTip>> createUserNailSet(Integer userId, List<Integer> tipIds) {
+        return nailService.createUserNailSet(userId, tipIds)
+                .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
 }

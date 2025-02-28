@@ -1,13 +1,11 @@
 package art.snail.naillian.backend.domain.user.dto;
 
 import art.snail.naillian.backend.domain.nail.dto.NailIdDTO;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 
 import java.util.List;
 
-@Getter
-@AllArgsConstructor
+@Data
 public class CreateNailSetDTO {
     private NailIdDTO thumb;
     private NailIdDTO index;

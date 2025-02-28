@@ -5,6 +5,7 @@ import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.user.dto.CreateNailSetDTO;
 import art.snail.naillian.backend.domain.user.dto.UserChangeNicknameDTO;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
 import art.snail.naillian.backend.domain.user.service.UserService;
@@ -56,9 +57,18 @@ public class UserController {
             Pageable page
     ) {
         return userService.getUserNailSet(payload.getUserId(), page)
-                .log()
                 .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
                 .collectList()
+                .map(CommonResponse::success);
+    }
+
+    @PostMapping("/me/nail-sets")
+    public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> createUserNailSet(
+            UserAuthByTokenPayload payload,
+            @RequestBody CreateNailSetDTO requestBody
+    ) {
+        return userService.createUserNailSet(payload.getUserId(), requestBody.toList())
+                .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
                 .map(CommonResponse::success);
     }
 }

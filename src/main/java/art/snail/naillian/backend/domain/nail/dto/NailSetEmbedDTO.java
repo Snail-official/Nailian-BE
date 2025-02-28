@@ -10,7 +10,7 @@ import java.util.List;
 @Getter
 @AllArgsConstructor
 public class NailSetEmbedDTO<T> {
-    private Long id;
+    private Integer id;
 
     private T thumb;
     private T index;
@@ -18,7 +18,7 @@ public class NailSetEmbedDTO<T> {
     private T ring;
     private T pinky;
 
-    public NailSetEmbedDTO(Long id, List<T> embedDataList) {
+    public NailSetEmbedDTO(Integer id, List<T> embedDataList) {
         this.id = id;
         this.thumb = embedDataList.get(0);
         this.index = embedDataList.get(1);

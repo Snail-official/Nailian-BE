@@ -42,4 +42,13 @@ public class UserController {
                     return Mono.just(CommonResponse.success(dto, message));
                 });
     }
+
+    /** 회원 탈퇴(논리적 삭제) */
+    @DeleteMapping("/me")
+    public Mono<CommonResponse<Void>> deleteUser(
+            UserAuthByTokenPayload payload
+    ) {
+        return userService.deleteUser(payload.getUserId())
+                .then(Mono.just(CommonResponse.success(null, "회원 탈퇴가 완료되었습니다.")));
+    }
 }

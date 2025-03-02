@@ -38,7 +38,6 @@ public class NailService {
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
-    private final JwtProvider jwtProvider;
     private final UserPreferenceRepository userPreferenceRepository;
 
     /**
@@ -47,48 +46,26 @@ public class NailService {
      */
     public Mono<PageDTO<NailIdAndUrlDTO>> getUserNailPreferences(int userId, int page, int size) {
         return userPreferenceRepository.findAllByUserId(userId)
+                .flatMap(this::convertUserPrefToNailIdAndUrlDTO) // 변환 로직
                 .collectList()
-                .flatMap(preferences -> {
-                    int totalElements = preferences.size();
+                .flatMap(list -> {
+                    int totalElements = list.size();
                     Pageable pageable = PageRequest.of(page - 1, size);
-                    int offset = (int) pageable.getOffset();
-                    if (offset >= totalElements) {
-                        return Mono.just(new PageDTO<>(Collections.emptyList(), pageable, totalElements));
-                    }
-                    int end = Math.min(offset + size, totalElements);
-                    List<UserPreferences> pagedPreferences = preferences.subList(offset, end);
-
-                    return Flux.fromIterable(pagedPreferences)
-                            .flatMap(up -> convertUserPrefToNailIdAndUrlDTO(up))
-                            .collectList()
-                            .map(dtoList -> new PageDTO<>(dtoList, pageable, totalElements));
+                    int start = Math.min((int) pageable.getOffset(), totalElements);
+                    int end = Math.min(start + size, totalElements);
+                    return Mono.just(new PageDTO<>(list.subList(start, end), pageable, totalElements));
                 });
     }
 
     private Mono<NailIdAndUrlDTO> convertUserPrefToNailIdAndUrlDTO(UserPreferences up) {
-        int shapeIdx = (int) up.getShape();
-        int colorIdx = (int) up.getColor();
-        int categoryIdx = (int) up.getCategory();
-
-        // enum 배열에서 인덱스로 해당 enum 추출 인덱스 범위 체크,, 해야 될 수도?
-        NailShape shapeEnum = NailShape.values()[shapeIdx];
-        NailColor colorEnum = NailColor.values()[colorIdx];
-        NailCategory categoryEnum = NailCategory.values()[categoryIdx];
-
-        // DB에 저장된 enum 값과 일치하도록 문자열 변환
-        String shapeStr = shapeEnum.name().toLowerCase();
-        String colorStr = colorEnum.name().toLowerCase();
-        String categoryStr = categoryEnum.name().toLowerCase();
-
-        return tipRepository.findByShapeAndColorAndCategory(shapeStr, colorStr, categoryStr)
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
-                        "NailTip을 찾을 수 없습니다. (shape=" + shapeStr +
-                                ", color=" + colorStr +
-                                ", category=" + categoryStr + ")")))
-                .map(NailIdAndUrlDTO::from);
+        return tipRepository.findByShapeAndColorAndCategory(
+                        NailShape.values()[(int) up.getShape()].name().toLowerCase(),
+                        NailColor.values()[(int) up.getColor()].name().toLowerCase(),
+                        NailCategory.values()[(int) up.getCategory()].name().toLowerCase()
+                )
+                .map(NailIdAndUrlDTO::from)
+                .switchIfEmpty(Mono.empty());
     }
-
-
 
     /**
      * 사용자가 선택한 네일 스타일을 저장함
@@ -97,33 +74,31 @@ public class NailService {
      * 네일팁 속성(enum의 ordinal 값을 double로 변환) 이용해 UserPreferences 엔티티 생성 후 저장
      */
 
-    public Mono<String> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
+    public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
         List<Integer> preferences = dto.getPreferences();
 
-        if (preferences.size() < 3) {
-            return Mono.error(new ReportableError(HttpStatus.UNPROCESSABLE_ENTITY, "최소 3개 이상의 네일 스타일을 선택해주세요."));
-        }
-        if (preferences.size() > 10) {
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "최대 10개까지만 네일 스타일 선택이 가능합니다."));
+        if (preferences.size() < 3 || preferences.size() > 10) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST,
+                    "네일 스타일은 최소 3개, 최대 10개까지 선택해야 합니다."));
         }
 
-        return userPreferenceRepository.deleteAllByUserId(userId)
-                .thenMany(Flux.fromIterable(preferences))
-                .flatMap(tipId ->
-                        tipRepository.findById(tipId)
-                                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
-                                        "해당 네일 스타일을 찾을 수 없습니다. id: " + tipId)))
-                                .map(nailTip -> new UserPreferences(
-                                        null, userId, // autoincrement
-                                        (double) nailTip.getShape().ordinal(),
-                                        (double) nailTip.getColor().ordinal(),
-                                        (double) nailTip.getCategory().ordinal()
-                                ))
-                )
+        return tipRepository.findAllById(preferences)
                 .collectList()
-                .flatMapMany(userPreferenceRepository::saveAll)
-                .collectList()
-                .then(Mono.just("선호 취향 저장 성공"));
+                .flatMap(tips -> {
+                    if (tips.size() != preferences.size()) {
+                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
+                                "일부 네일 스타일을 찾을 수 없습니다."));
+                    }
+                    List<UserPreferences> newPreferences = tips.stream()
+                            .map(tip -> new UserPreferences(null, userId,
+                                    (double) tip.getShape().ordinal(),
+                                    (double) tip.getColor().ordinal(),
+                                    (double) tip.getCategory().ordinal()))
+                            .toList();
+
+                    return userPreferenceRepository.deleteAllByUserId(userId)
+                            .then(userPreferenceRepository.saveAll(newPreferences).then());
+                });
     }
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);

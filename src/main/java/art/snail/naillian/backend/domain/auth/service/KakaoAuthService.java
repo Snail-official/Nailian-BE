@@ -151,9 +151,10 @@ public class KakaoAuthService {
                 .flatMap(socialLogin ->
                         userRepository.findById(socialLogin.getUserId())
                                 .flatMap(existingUser -> {
-                                    // 탈퇴된 계정이면 접근 차단 등 처리
+                                    // 이미 탈퇴한 사용자를 다시 활성화(재가입 허용)
                                     if (existingUser.getDeletedAt() != null) {
-                                        return Mono.error(new ReportableError(HttpStatus.FORBIDDEN, "이미 탈퇴 처리된 사용자입니다."));
+                                        existingUser.setDeletedAt(null);
+                                        return userRepository.save(existingUser);
                                     }
                                     return Mono.just(existingUser);
                                 })

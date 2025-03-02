@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -25,7 +26,10 @@ public class UserService {
      * 기존 회원 정보 불러오기
      */
     public Mono<User> getUserById(int id) {
-        return userRepository.findById(id);
+
+        return userRepository.findById(id)
+                .filter(user -> user.getDeletedAt() == null)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")));
     }
 
     public Mono<User> getUserByNickname(String nickname) {
@@ -67,5 +71,21 @@ public class UserService {
                     return userRepository.save(user)
                             .zipWith(Mono.just(message));
                 });
+    }
+
+    /**
+     * 회원 탈퇴(논리적 삭제)
+     */
+    public Mono<Void> deleteUser(int userId){
+        return userRepository.findById(userId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")))
+                .flatMap(user -> {
+                    if (user.getDeletedAt() != null){
+                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."));
+                    }
+                    user.setDeletedAt(LocalDateTime.now());
+                    return userRepository.save(user);
+                })
+                .then();
     }
 }

@@ -21,7 +21,7 @@ public class NailSetController {
 
     @GetMapping("/{id}")
     public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> getNailSet(
-            @PathVariable("id") Long id
+            @PathVariable("id") Integer id
     ) {
         return nailService.getNailsBySetId(id)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "네일 세트를 찾을 수 없습니다.")))

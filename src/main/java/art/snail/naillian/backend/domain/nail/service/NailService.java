@@ -40,19 +40,19 @@ public class NailService {
         return setRepository.findAllBy(page);
     }
 
-    public Mono<NailSet> getNailSet(Long id) {
+    public Mono<NailSet> getNailSet(Integer id) {
         return setRepository.findById(id);
     }
 
-    public Mono<NailGroup> getNailGroup(Long id) {
+    public Mono<NailGroup> getNailGroup(Integer id) {
         return groupRepository.findById(id);
     }
 
-    public Flux<NailTip> getNailsBySetId(Long setId) {
+    public Flux<NailTip> getNailsBySetId(Integer setId) {
         return this.getNailSet(setId)
                 .flatMap(nailSet -> groupRepository.findById(nailSet.getNailGroupId()))
                 .flatMapMany(nailGroup -> {
-                    List<Long> ids = Stream.of(
+                    List<Integer> ids = Stream.of(
                             nailGroup.getFingerThumb(),
                             nailGroup.getFingerIndex(),
                             nailGroup.getFingerMiddle(),
@@ -66,6 +66,6 @@ public class NailService {
                         )));
                     return Flux.fromIterable(ids);
                 })
-                .flatMapSequential(assetId -> tipRepository.findById(assetId.intValue()));
+                .flatMapSequential(tipRepository::findById);
     }
 }

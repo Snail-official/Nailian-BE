@@ -59,29 +59,33 @@ public class NailService {
                     List<UserPreferences> pagedPreferences = preferences.subList(offset, end);
 
                     return Flux.fromIterable(pagedPreferences)
-                            .flatMap(up -> {
-                                int shapeIdx = (int) up.getShape();
-                                int colorIdx = (int) up.getColor();
-                                int categoryIdx = (int) up.getCategory();
-
-                                NailShape shapeEnum = NailShape.values()[shapeIdx];
-                                NailColor colorEnum = NailColor.values()[colorIdx];
-                                NailCategory categoryEnum = NailCategory.values()[categoryIdx];
-
-                                String shapeStr = shapeEnum.name().toLowerCase();
-                                String colorStr = colorEnum.name().toLowerCase();
-                                String categoryStr = categoryEnum.name().toLowerCase();
-
-                                return tipRepository.findByShapeAndColorAndCategory(shapeStr, colorStr, categoryStr)
-                                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
-                                                "NailTip을 찾을 수 없습니다. (shape=" + shapeStr +
-                                                        ", color=" + colorStr +
-                                                        ", category=" + categoryStr + ")")));
-                            })
-                            .map(NailIdAndUrlDTO::from)
+                            .flatMap(up -> convertUserPrefToNailIdAndUrlDTO(up))
                             .collectList()
                             .map(dtoList -> new PageDTO<>(dtoList, pageable, totalElements));
                 });
+    }
+
+    private Mono<NailIdAndUrlDTO> convertUserPrefToNailIdAndUrlDTO(UserPreferences up) {
+        int shapeIdx = (int) up.getShape();
+        int colorIdx = (int) up.getColor();
+        int categoryIdx = (int) up.getCategory();
+
+        // enum 배열에서 인덱스로 해당 enum 추출 인덱스 범위 체크,, 해야 될 수도?
+        NailShape shapeEnum = NailShape.values()[shapeIdx];
+        NailColor colorEnum = NailColor.values()[colorIdx];
+        NailCategory categoryEnum = NailCategory.values()[categoryIdx];
+
+        // DB에 저장된 enum 값과 일치하도록 문자열 변환
+        String shapeStr = shapeEnum.name().toLowerCase();
+        String colorStr = colorEnum.name().toLowerCase();
+        String categoryStr = categoryEnum.name().toLowerCase();
+
+        return tipRepository.findByShapeAndColorAndCategory(shapeStr, colorStr, categoryStr)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
+                        "NailTip을 찾을 수 없습니다. (shape=" + shapeStr +
+                                ", color=" + colorStr +
+                                ", category=" + categoryStr + ")")))
+                .map(NailIdAndUrlDTO::from);
     }
 
 
@@ -110,7 +114,7 @@ public class NailService {
                                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
                                         "해당 네일 스타일을 찾을 수 없습니다. id: " + tipId)))
                                 .map(nailTip -> new UserPreferences(
-                                        null, userId,
+                                        null, userId, // autoincrement
                                         (double) nailTip.getShape().ordinal(),
                                         (double) nailTip.getColor().ordinal(),
                                         (double) nailTip.getCategory().ordinal()

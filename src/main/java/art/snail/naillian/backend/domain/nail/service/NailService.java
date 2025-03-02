@@ -6,6 +6,8 @@ import art.snail.naillian.backend.domain.nail.common.NailCategory;
 import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
 import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
@@ -98,6 +100,51 @@ public class NailService {
 
                     return userPreferenceRepository.deleteAllByUserId(userId)
                             .then(userPreferenceRepository.saveAll(newPreferences).then());
+                });
+    }
+
+    /**
+     * 특정 네일 세트와 유사한 네일 세트 목록을 반환하는 임시 로직
+     *
+     *
+     */
+    public Mono<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>> getSimilarNailSets(Integer nailSetId, Integer folderId, Pageable pageable) {
+        // 1) 먼저 기준이 될 nailSetId가 존재하는지 확인
+        return setRepository.findById(nailSetId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 네일 세트를 찾을 수 없습니다.")))
+                .flatMapMany(baseSet -> setRepository.findByFolderId(folderId, pageable)
+                        // 자기 자신 제외
+                        .filter(similarSet -> !similarSet.getId().equals(baseSet.getId()))
+                )
+                // 2) NailSet -> NailSetEmbedDTO<NailImageUrlDTO>
+                .flatMap(this::convertToNailSetEmbedDTO)
+                .collectList()
+                .flatMap(similarSets -> {
+                    int totalElements = similarSets.size();
+                    // PageDTO 생성자: PageDTO(List<T> content, Pageable pageable, long total)
+                    PageDTO<NailSetEmbedDTO<NailImageUrlDTO>> pageDTO = new PageDTO<>(similarSets, pageable, totalElements);
+                    return Mono.just(pageDTO);
+                });
+    }
+
+    /**
+     * NailSet을 NailSetEmbedDTO로 변환
+     */
+    private Mono<NailSetEmbedDTO<NailImageUrlDTO>> convertToNailSetEmbedDTO(NailSet nailSet) {
+        return groupRepository.findById(nailSet.getNailGroupId())
+                .flatMap(nailGroup -> {
+                    return Flux.just(
+                                    nailGroup.getFingerThumb(),
+                                    nailGroup.getFingerIndex(),
+                                    nailGroup.getFingerMiddle(),
+                                    nailGroup.getFingerRing(),
+                                    nailGroup.getFingerPinky()
+                            )
+                            .filter(Objects::nonNull)
+                            .flatMapSequential(tipId -> tipRepository.findById(tipId))
+                            .map(NailImageUrlDTO::from)
+                            .collectList()
+                            .map(images -> new NailSetEmbedDTO<>(nailSet.getId(), images));
                 });
     }
     public Flux<NailAssets> getNailAssets(Pageable page) {

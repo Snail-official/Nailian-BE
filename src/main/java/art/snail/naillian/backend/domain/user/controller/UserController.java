@@ -51,34 +51,46 @@ public class UserController {
                 });
     }
 
-/** 회원 탈퇴(논리적 삭제) */
-@DeleteMapping("/me")
-public Mono<CommonResponse<Void>> deleteUser(
-        UserAuthByTokenPayload payload
-) {
-    return userService.deleteUser(payload.getUserId())
-            .then(Mono.just(CommonResponse.success(null, "회원 탈퇴가 완료되었습니다.")));
+    /**
+     * 회원 탈퇴(논리적 삭제)
+     */
+    @DeleteMapping("/me")
+    public Mono<CommonResponse<Void>> deleteUser(
+            UserAuthByTokenPayload payload
+    ) {
+        return userService.deleteUser(payload.getUserId())
+                .then(Mono.just(CommonResponse.success(null, "회원 탈퇴가 완료되었습니다.")));
+    }
+
+    /**
+     * 사용자의 네일 세트 조회
+     */
+    @GetMapping("/me/nail-sets")
+    public Mono<CommonResponse<Iterable<NailSetEmbedDTO<NailImageUrlDTO>>>> getUserNailSets(
+            UserAuthByTokenPayload payload,
+            Pageable page
+    ) {
+        return userService.getUserNailSet(payload.getUserId(), page)
+                .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
+                .collectList()
+                .map(CommonResponse::success);
+    }
+
+    /**
+     * 사용자의 네일 세트 생성
+     */
+    @PostMapping("/me/nail-sets")
+    public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> createUserNailSet(
+            UserAuthByTokenPayload payload,
+            @RequestBody CreateNailSetDTO requestBody
+    ) {
+        return userService.createUserNailSet(payload.getUserId(), requestBody.toList())
+                .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
+                .map(CommonResponse::success);
+    }
 }
 
-/** 사용자의 네일 세트 조회 */
-@GetMapping("/me/nail-sets")
-public Mono<CommonResponse<Iterable<NailSetEmbedDTO<NailImageUrlDTO>>>> getUserNailSets(
-        UserAuthByTokenPayload payload,
-        Pageable page
-) {
-    return userService.getUserNailSet(payload.getUserId(), page)
-            .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
-            .collectList()
-            .map(CommonResponse::success);
-}
 
-/** 사용자의 네일 세트 생성 */
-@PostMapping("/me/nail-sets")
-public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> createUserNailSet(
-        UserAuthByTokenPayload payload,
-        @RequestBody CreateNailSetDTO requestBody
-) {
-    return userService.createUserNailSet(payload.getUserId(), requestBody.toList())
-            .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
-            .map(CommonResponse::success);
-}
+
+
+

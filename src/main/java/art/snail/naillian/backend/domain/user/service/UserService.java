@@ -17,7 +17,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -33,7 +36,10 @@ public class UserService {
      * 기존 회원 정보 불러오기
      */
     public Mono<User> getUserById(int id) {
-        return userRepository.findById(id);
+
+        return userRepository.findById(id)
+                .filter(user -> user.getDeletedAt() == null)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")));
     }
 
     public Mono<User> getUserByNickname(String nickname) {
@@ -77,14 +83,37 @@ public class UserService {
                 });
     }
 
+    /**
+     * 회원 탈퇴(논리적 삭제)
+     */
+    public Mono<Void> deleteUser(int userId) {
+        return userRepository.findById(userId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")))
+                .flatMap(user -> {
+                    if (user.getDeletedAt() != null) {
+                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."));
+                    }
+                    user.setDeletedAt(LocalDateTime.now());
+                    return userRepository.save(user);
+                })
+                .then();
+    }
+
+    /**
+     * 사용자의 네일 세트 조회
+     */
     public Flux<NailSetEmbedDTO<NailTip>> getUserNailSet(Integer userId, Pageable page) {
         return nailService.getUserNailSets(userId, page)
                 .map(NailSet::getId)
                 .flatMap(nailService::getNailSetWithNailTip);
     }
 
+    /**
+     * 사용자의 네일 세트 생성
+     */
     public Mono<NailSetEmbedDTO<NailTip>> createUserNailSet(Integer userId, List<Integer> tipIds) {
         return nailService.createUserNailSet(userId, tipIds)
                 .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
-}
+
+

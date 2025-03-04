@@ -1,7 +1,6 @@
 package art.snail.naillian.backend.domain.nail.service;
 
 import art.snail.naillian.backend.common.PageDTO;
-import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
 import art.snail.naillian.backend.domain.nail.common.NailCategory;
 import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
@@ -26,7 +25,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -44,17 +42,13 @@ public class NailService {
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
      * 해당 속성들을 이용해 NailTip을 조회해야 함
      */
-    public Mono<PageDTO<NailIdAndUrlDTO>> getUserNailPreferences(int userId, int page, int size) {
-        return userPreferenceRepository.findAllByUserId(userId)
-                .flatMap(this::convertUserPrefToNailIdAndUrlDTO) // 변환 로직
-                .collectList()
-                .flatMap(list -> {
-                    int totalElements = list.size();
-                    Pageable pageable = PageRequest.of(page - 1, size);
-                    int start = Math.min((int) pageable.getOffset(), totalElements);
-                    int end = Math.min(start + size, totalElements);
-                    return Mono.just(new PageDTO<>(list.subList(start, end), pageable, totalElements));
-                });
+    public Mono<PageDTO<NailIdAndUrlDTO>> getUserNailPreferences(int userId, Pageable pageable) {
+        return userPreferenceRepository.countByUserId(userId)
+                .flatMap(totalElements -> userPreferenceRepository.findAllByUserId(userId, pageable)
+                        .flatMap(this::convertUserPrefToNailIdAndUrlDTO)
+                        .collectList()
+                        .map(list -> new PageDTO<>(list, pageable, totalElements))
+                );
     }
 
     private Mono<NailIdAndUrlDTO> convertUserPrefToNailIdAndUrlDTO(UserPreferences up) {
@@ -91,9 +85,9 @@ public class NailService {
                     }
                     List<UserPreferences> newPreferences = tips.stream()
                             .map(tip -> new UserPreferences(null, userId,
-                                    (double) tip.getShape().ordinal(),
-                                    (double) tip.getColor().ordinal(),
-                                    (double) tip.getCategory().ordinal()))
+                                    tip.getShape(),
+                                    tip.getColor(),
+                                    tip.getCategory()))
                             .toList();
 
                     return userPreferenceRepository.deleteAllByUserId(userId)

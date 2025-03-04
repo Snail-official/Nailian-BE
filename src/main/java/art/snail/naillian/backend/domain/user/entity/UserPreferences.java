@@ -1,5 +1,8 @@
 package art.snail.naillian.backend.domain.user.entity;
 
+import art.snail.naillian.backend.domain.nail.common.NailCategory;
+import art.snail.naillian.backend.domain.nail.common.NailColor;
+import art.snail.naillian.backend.domain.nail.common.NailShape;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,13 +18,21 @@ public class UserPreferences {
     @Id
     private Integer id;
 
-    @Column("user_id")
+
     private Integer userId;
-    @Column("shape")
+
     private double shape;
-    @Column("color")
+
     private double color;
-    @Column("category")
+
     private double category;
+
+    public UserPreferences(Integer id, Integer userId, NailShape nailShape, NailColor nailColor, NailCategory nailCategory){
+        this.id = id;
+        this.userId = userId;
+        this.shape = nailShape.ordinal();
+        this.color = nailColor.ordinal();
+        this.category = nailCategory.ordinal();
+    }
 
 }

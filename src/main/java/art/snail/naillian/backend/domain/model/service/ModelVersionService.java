@@ -15,13 +15,10 @@ import java.time.LocalDate;
 public class ModelVersionService {
     private final S3Service s3Service;
 
-    public Mono<CommonResponse<ModelVersionDTO>> getLatestModelVersion() {
-
+    public Mono<ModelVersionDTO> getLatestModelVersion() {
         String latestModelFileName = "ResNet101-DUC-12-" + LocalDate.now().toString().replace("-", "") + "-int8.onnx";
-
         String downloadUrl = s3Service.getCloudFrontModelUrl(latestModelFileName);
 
-        ModelVersionDTO modelVersionDTO = new ModelVersionDTO(latestModelFileName, downloadUrl);
-        return Mono.just(CommonResponse.success(modelVersionDTO, "최신 모델 버전 조회 성공"));
+        return Mono.just(new ModelVersionDTO(latestModelFileName, downloadUrl));
     }
 }

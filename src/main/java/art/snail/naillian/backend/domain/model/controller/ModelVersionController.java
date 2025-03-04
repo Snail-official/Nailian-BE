@@ -19,6 +19,8 @@ public class ModelVersionController {
 
     @GetMapping("/version")
     public Mono<CommonResponse<ModelVersionDTO>> getLatestModelVersion() {
-        return modelVersionService.getLatestModelVersion();
+        return modelVersionService.getLatestModelVersion()
+                .map(modelVersionDTO -> CommonResponse.success(modelVersionDTO, "최신 모델 버전 조회 성공"));
     }
+
 }

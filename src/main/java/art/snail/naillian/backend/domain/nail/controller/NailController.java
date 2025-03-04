@@ -8,6 +8,7 @@ import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -32,7 +33,10 @@ public class NailController {
             UserAuthByTokenPayload payload,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "10") int size) {
-        return nailService.getUserNailPreferences(payload.getUserId(), page, size)
+
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        return nailService.getUserNailPreferences(payload.getUserId(), pageable)
                 .map(CommonResponse::success);
     }
 

@@ -115,5 +115,6 @@ public class UserService {
         return nailService.createUserNailSet(userId, tipIds)
                 .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
+}
 
 

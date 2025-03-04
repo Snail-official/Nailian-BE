@@ -6,6 +6,7 @@ import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
 import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
@@ -133,5 +134,29 @@ public class NailService {
                     return Flux.fromIterable(ids);
                 })
                 .flatMapSequential(tipRepository::findById);
+    }
+
+    public Mono<NailSetEmbedDTO<NailTip>> getNailSetWithNailTip(Integer setId) {
+        return getNailsBySetId(setId)
+                .collectList()
+                .map(nailTips -> new NailSetEmbedDTO<>(setId, nailTips));
+    }
+
+    public Flux<NailSet> getUserNailSets(Integer userId, Pageable page) {
+        return setRepository.findAllByUploadedBy(userId, page);
+    }
+
+    public Mono<NailSet> createUserNailSet(Integer userId, List<Integer> tipIds) {
+        if (tipIds == null || tipIds.size() != 5)
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "만들고자 하는 네일 그룹의 네일 아이디 개수는 5개이어야 합니다."));
+
+        return Mono.just(NailGroup.fromList(tipIds))
+                .flatMap(groupRepository::save)
+                .map(nailGroup -> NailSet.builder()
+                        .nailGroupId(nailGroup.getId())
+                        .uploadedBy(userId)
+                        .name("사용자가 찜한 네일셋")
+                        .build())
+                .flatMap(setRepository::save);
     }
 }

@@ -8,4 +8,5 @@ import reactor.core.publisher.Flux;
 public interface NailSetRepository extends ReactiveCrudRepository<NailSet, Integer> {
     Flux<NailSet> findAllBy(Pageable page);
 
+    Flux<NailSet> findAllByUploadedBy(Integer uploadedUserId, Pageable page);
 }

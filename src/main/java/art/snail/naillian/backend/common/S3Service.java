@@ -13,12 +13,27 @@ import reactor.core.publisher.Mono;
 public class S3Service {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final WebClient webClient = WebClient.create();
+    private final WebClient webClient;
 
     @Value("${cloudfront.cdn}")
     private String cloudFrontCdn;
 
     private static final String MODEL_METADATA_FILE = "model/model.json";
+
+    /**
+     * CloudFront에서 모델 메타데이터 JSON을 읽고 DTO로 변환하여 반환
+     * @return ModelVersionDTO
+     */
+    /**
+     * WebClient를 생성할 때부터 리디렉션을 자동으로 따르도록 설정
+     */
+    public S3Service() {
+        this.webClient = WebClient.builder()
+                // Reactive는 256kb 까지만 인메모리에 저장하므로 사전 인메모리 정의
+                // builder를 사용해서 기본적으로 http 리다이렉션(301)을 자동으로 처리하게끔 수정
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
+                .build();
+    }
 
     /**
      * CloudFront에서 모델 메타데이터 JSON을 읽고 DTO로 변환하여 반환
@@ -30,17 +45,8 @@ public class S3Service {
         return webClient.get()
                 .uri(metadataUrl)
                 .header("Accept", "application/json")
-                .exchangeToMono(response -> {
-                    if (response.statusCode().is3xxRedirection()) {
-                        String location = response.headers().asHttpHeaders().getFirst("Location");
-                        if (location != null) {
-                            return webClient.get().uri(location)
-                                    .retrieve()
-                                    .bodyToMono(String.class);
-                        }
-                    }
-                    return response.bodyToMono(String.class);
-                })
+                .retrieve()
+                .bodyToMono(String.class)
                 .flatMap(json -> Mono.fromCallable(() -> objectMapper.readTree(json)))
                 .onErrorResume(e -> Mono.empty());
     }

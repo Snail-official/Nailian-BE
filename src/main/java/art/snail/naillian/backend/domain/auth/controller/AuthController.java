@@ -1,5 +1,8 @@
 package art.snail.naillian.backend.domain.auth.controller;
 
+import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.domain.auth.dto.KakaoAuthRequest;
+import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.auth.service.KakaoAuthService;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +26,9 @@ public class AuthController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/kakao")
-    public Mono<Map<String, Object>> kakaoLogin(@RequestBody(required = false) Map<String, String> body) {
-
-        return kakaoAuthService.kakaoLogin(body);
+    public Mono<CommonResponse<UserTokenPairDTO>> kakaoLogin(@RequestBody KakaoAuthRequest request) {
+        return kakaoAuthService.handleLoginByKakaoAccessToken(request.getKakaoAccessToken())
+                .map(dto -> CommonResponse.success(dto, "카카오 로그인 성공"));
     }
 
     /** Token 재발급 */

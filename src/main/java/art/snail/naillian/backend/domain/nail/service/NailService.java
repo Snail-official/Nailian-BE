@@ -153,7 +153,6 @@ public class NailService {
                 .map(nailGroup -> NailSet.builder()
                         .nailGroupId(nailGroup.getId())
                         .uploadedBy(userId)
-                        .name("사용자가 찜한 네일셋")
                         .build())
                 .flatMap(setRepository::save);
     }

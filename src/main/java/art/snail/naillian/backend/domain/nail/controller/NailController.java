@@ -13,6 +13,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/nails")
 @RequiredArgsConstructor
@@ -31,12 +34,15 @@ public class NailController {
     @GetMapping("/preferences")
     public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getUserNailPreferences(
             UserAuthByTokenPayload payload,
-            @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size) {
+            Pageable page) {
 
-        Pageable pageable = PageRequest.of(page - 1, size);
-
-        return nailService.getUserNailPreferences(payload.getUserId(), pageable)
+        return nailService.getUserNailPreferences(payload.getUserId(), page)
+                .map(pageDTO -> {
+                    List<NailIdAndUrlDTO> dtos = pageDTO.getContent().stream()
+                            .map(NailIdAndUrlDTO::from)
+                            .collect(Collectors.toList());
+                    return new PageDTO<>(dtos, pageDTO.getPageable(), pageDTO.getTotalElements());
+                })
                 .map(CommonResponse::success);
     }
 
@@ -46,8 +52,6 @@ public class NailController {
             @RequestBody SaveNailPreferencesDTO dto
     ) {
         return nailService.saveNailPreferences(payload.getUserId(), dto)
-                .then(Mono.just(
-                        CommonResponse.success(null, "선호 취향 저장 성공")
-                ));
+                .then(Mono.just(CommonResponse.success(null, "선호 취향 저장 성공")));
     }
 }

@@ -43,23 +43,22 @@ public class NailService {
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
      * 해당 속성들을 이용해 NailTip을 조회해야 함
      */
-    public Mono<PageDTO<NailIdAndUrlDTO>> getUserNailPreferences(int userId, Pageable pageable) {
+    public Mono<PageDTO<NailTip>> getUserNailPreferences(int userId, Pageable pageable) {
         return userPreferenceRepository.countByUserId(userId)
-                .flatMap(totalElements -> userPreferenceRepository.findAllByUserId(userId, pageable)
-                        .flatMap(this::convertUserPrefToNailIdAndUrlDTO)
-                        .collectList()
-                        .map(list -> new PageDTO<>(list, pageable, totalElements))
+                .flatMap(totalElements ->
+                        userPreferenceRepository.findAllByUserId(userId, pageable)
+                                .flatMap(this::convertUserPrefToNailTip)
+                                .collectList()
+                                .map(list -> new PageDTO<>(list, pageable, totalElements))
                 );
     }
 
-    private Mono<NailIdAndUrlDTO> convertUserPrefToNailIdAndUrlDTO(UserPreferences up) {
+    private Mono<NailTip> convertUserPrefToNailTip(UserPreferences up) {
         return tipRepository.findByShapeAndColorAndCategory(
-                        NailShape.values()[(int) up.getShape()].name().toLowerCase(),
-                        NailColor.values()[(int) up.getColor()].name().toLowerCase(),
-                        NailCategory.values()[(int) up.getCategory()].name().toLowerCase()
-                )
-                .map(NailIdAndUrlDTO::from)
-                .switchIfEmpty(Mono.empty());
+                NailShape.values()[(int) up.getShape()].name().toLowerCase(),
+                NailColor.values()[(int) up.getColor()].name().toLowerCase(),
+                NailCategory.values()[(int) up.getCategory()].name().toLowerCase()
+        );
     }
 
     /**

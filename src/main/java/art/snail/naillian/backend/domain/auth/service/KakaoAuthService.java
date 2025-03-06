@@ -64,8 +64,7 @@ public class KakaoAuthService {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 액세스 토큰이 필요합니다."));
 
         // 이제 아래 로직들은 “인가코드 -> 액세스 토큰 -> 사용자 정보 -> 유저 생성/조회 -> 토큰 발급 -> 응답”
-        return Mono.just(kakaoToken)
-                .flatMap(this::fetchKakaoUserInfo)
+        return this.fetchKakaoUserInfo(kakaoToken)
                 .flatMap(this::findOrCreateUser)
                 .flatMap(this::issueTokenAndBuildSuccess);
     }

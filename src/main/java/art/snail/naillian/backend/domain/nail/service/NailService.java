@@ -177,4 +177,11 @@ public class NailService {
                                         .build()))
                 );
     }
+
+    public Mono<NailSet> deleteNailSetEnsureUser(int userId, int setId) {
+        return getNailSet(setId)
+                .filter(nailSet -> nailSet.getUploadedBy() == userId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 네일 세트를 찾을 수 없습니다.")))
+                .flatMap(nailSet -> setRepository.delete(nailSet).then(Mono.just(nailSet)));
+    }
 }

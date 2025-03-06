@@ -31,6 +31,7 @@ public class AuthConfig {
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/auth/**").permitAll()
+                        .pathMatchers("/model/**").permitAll()
                         .anyExchange().authenticated()
                 )
                 .addFilterAt(new JwtAuthFilter(jwtProvider), SecurityWebFiltersOrder.HTTP_BASIC)

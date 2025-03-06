@@ -128,6 +128,9 @@ public class UserService {
                 .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
 
+    /**
+     * 사용자 네일 세트 보관 해제
+     */
     public Mono<Void> unScrapNailSetForUser(Integer userId, Integer nailSetId) {
         if (nailSetId == null)
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "네일 세트 아이디를 지정해주세요."));

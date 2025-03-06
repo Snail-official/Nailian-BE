@@ -4,9 +4,8 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.common.NailCategory;
 import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
-import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
@@ -19,7 +18,6 @@ import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -94,6 +92,7 @@ public class NailService {
                             .then(userPreferenceRepository.saveAll(newPreferences).then());
                 });
     }
+
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);
     }
@@ -157,5 +156,26 @@ public class NailService {
                         .name("사용자가 찜한 네일셋")
                         .build())
                 .flatMap(setRepository::save);
+    }
+
+    /**
+     * 사용자가 네일 세트를 보관함에 저장함
+     *
+     * @param userId 사용자의 id, 유효성을 검증하지 않음
+     * @param setId  네일 세트의 id, 유효성을 검증함
+     * @return 새로 생성되거나 이미 보관했던 네일 세트 정보
+     */
+    public Mono<NailSet> cloneNailSetForUser(int userId, int setId) {
+        return getNailSet(setId)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 네일 세트를 찾을 수 없습니다.")))
+                .flatMap(originalSet ->
+                        // 이미 저장한 적 있는 경우 이미 저장된 정보를 제공함
+                        setRepository.findByUploadedByAndNailGroupId(userId, originalSet.getNailGroupId())
+                                // 저장한 적 없는 경우 새로 저장함
+                                .switchIfEmpty(setRepository.save(NailSet.builder()
+                                        .nailGroupId(originalSet.getNailGroupId())
+                                        .uploadedBy(userId)
+                                        .build()))
+                );
     }
 }

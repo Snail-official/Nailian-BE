@@ -20,6 +20,4 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
         LIMIT 1
         """)
     Mono<NailTip> findByShapeAndColorAndCategory(String shape, String color, String category);
-
-
 }

@@ -12,6 +12,14 @@ import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
 import art.snail.naillian.backend.domain.nail.repository.*;
+import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
+import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
+import art.snail.naillian.backend.domain.nail.entity.*;
+import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
@@ -25,6 +33,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -36,62 +45,8 @@ public class NailService {
     private final NailGroupRepository groupRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository nailFolderSetRepository;
+    private final NailSetRecommendationService nailSetRecommendationService;
 
-    /**
-     * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
-     * 해당 속성들을 이용해 NailTip을 조회해야 함
-     */
-    public Mono<PageDTO<NailTip>> getUserNailPreferences(int userId, Pageable pageable) {
-        return userPreferenceRepository.countByUserId(userId)
-                .flatMap(totalElements ->
-                        userPreferenceRepository.findAllByUserId(userId, pageable)
-                                .flatMap(this::convertUserPrefToNailTip)
-                                .collectList()
-                                .map(list -> new PageDTO<>(list, pageable, totalElements))
-                );
-    }
-
-    private Mono<NailTip> convertUserPrefToNailTip(UserPreferences up) {
-        return tipRepository.findByShapeAndColorAndCategory(
-                NailShape.values()[(int) up.getShape()].name().toLowerCase(),
-                NailColor.values()[(int) up.getColor()].name().toLowerCase(),
-                NailCategory.values()[(int) up.getCategory()].name().toLowerCase()
-        );
-    }
-
-    /**
-     * 사용자가 선택한 네일 스타일을 저장함
-     * 조건 : 최소 3개 이상 네일 스타일 및 최대 10개까지
-     * 요청받은 각 네일 스타일 id를 기준으로 네일팁 조회
-     * 네일팁 속성(enum의 ordinal 값을 double로 변환) 이용해 UserPreferences 엔티티 생성 후 저장
-     */
-
-    public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
-        List<Integer> preferences = dto.getPreferences();
-
-        if (preferences.size() < 3 || preferences.size() > 10) {
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST,
-                    "네일 스타일은 최소 3개, 최대 10개까지 선택해야 합니다."));
-        }
-
-        return tipRepository.findAllById(preferences)
-                .collectList()
-                .flatMap(tips -> {
-                    if (tips.size() != preferences.size()) {
-                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
-                                "일부 네일 스타일을 찾을 수 없습니다."));
-                    }
-                    List<UserPreferences> newPreferences = tips.stream()
-                            .map(tip -> new UserPreferences(null, userId,
-                                    tip.getShape(),
-                                    tip.getColor(),
-                                    tip.getCategory()))
-                            .toList();
-
-                    return userPreferenceRepository.deleteAllByUserId(userId)
-                            .then(userPreferenceRepository.saveAll(newPreferences).then());
-                });
-    }
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);
     }
@@ -191,4 +146,35 @@ public class NailService {
                 });
     }
 
+
+    /**
+     * 사용자가 선택한 네일 스타일(네일 팁 id 배열)을 저장.
+     */
+    public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
+        List<Integer> preferences = dto.getPreferences();
+        if (preferences.size() < 3) {
+            return Mono.error(new ReportableError(HttpStatus.UNPROCESSABLE_ENTITY, "최소 3개 이상의 네일을 선택해야 합니다."));
+        }
+        if (preferences.size() > 10) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "최대 10개까지 선택할 수 있습니다."));
+        }
+        return tipRepository.findAllById(preferences)
+                .collectList()
+                .flatMap(tips -> {
+                    if (tips.size() != preferences.size()) {
+                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "일부 네일 스타일을 찾을 수 없습니다."));
+                    }
+                    List<UserPreferences> newPreferences = tips.stream()
+                            .map(tip -> new UserPreferences(
+                                    null,
+                                    userId,
+                                    tip.getShape() != null ? tip.getShape().getIndex() : 0,
+                                    tip.getColor() != null ? tip.getColor().getIndex() : 0,
+                                    tip.getCategory() != null ? tip.getCategory().getIndex() : 0
+                            ))
+                            .collect(Collectors.toList());
+                    return userPreferenceRepository.deleteAllByUserId(userId)
+                            .then(userPreferenceRepository.saveAll(newPreferences).then());
+                });
+    }
 }

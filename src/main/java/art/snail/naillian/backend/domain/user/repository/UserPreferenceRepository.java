@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 
 @Repository
 public interface UserPreferenceRepository extends ReactiveCrudRepository<UserPreferences, Integer> {
-    Flux<UserPreferences> findAllByUserId(int userId, Pageable pageable);
+    Flux<UserPreferences> findAllByUserId(int userId);
 
     Mono<Long> countByUserId(int userId);
 

@@ -99,7 +99,6 @@ public class NailService {
                 .flatMap(setRepository::save);
     }
 
-
     /**
      * 사용자가 선택한 네일 스타일(네일 팁 id 배열)을 저장.
      */
@@ -129,5 +128,14 @@ public class NailService {
                     return userPreferenceRepository.deleteAllByUserId(userId)
                             .then(userPreferenceRepository.saveAll(newPreferences).then());
                 });
+    }
+
+    /**
+     * 추천 네일 세트 조회
+     */
+    public Mono<List<NailSetRecommendationDTO>> getNailSetRecommendations(int userId) {
+        int numSamples = 15;
+        double temperature = 1.0;
+        return nailSetRecommendationService.getRecommendedNailSets(userId, numSamples, temperature);
     }
 }

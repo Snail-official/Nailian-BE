@@ -8,13 +8,9 @@ import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/nails")
@@ -32,26 +28,20 @@ public class NailController {
     }
 
     @GetMapping("/preferences")
-    public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getUserNailPreferences(
-            UserAuthByTokenPayload payload,
-            Pageable page) {
-
-        return nailService.getUserNailPreferences(payload.getUserId(), page)
-                .map(pageDTO -> {
-                    List<NailIdAndUrlDTO> dtos = pageDTO.getContent().stream()
-                            .map(NailIdAndUrlDTO::from)
-                            .collect(Collectors.toList());
-                    return new PageDTO<>(dtos, pageDTO.getPageable(), pageDTO.getTotalElements());
-                })
+    public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getNailPreferences(Pageable pageable) {
+        return nailService.getNailTips(pageable)  // 모든 NailTip 데이터를 Pageable 기준으로 조회
+                .map(NailIdAndUrlDTO::from)
+                .collectList()
+                .map(list -> new PageDTO<>(list, pageable, list.size()))
                 .map(CommonResponse::success);
     }
 
     @PostMapping("/preferences")
-    public Mono<CommonResponse<Void>> saveNailPreferences(
+    public Mono<CommonResponse<String>> saveNailPreferences(
             UserAuthByTokenPayload payload,
             @RequestBody SaveNailPreferencesDTO dto
     ) {
         return nailService.saveNailPreferences(payload.getUserId(), dto)
-                .then(Mono.just(CommonResponse.success(null, "선호 취향 저장 성공")));
+                .then(Mono.just(CommonResponse.success("선호 취향 저장 성공", "네일 취향 저장 완료")));
     }
 }

@@ -27,14 +27,6 @@ public class NailSetRecommendationService {
     private final NailTipRepository nailTipRepository;
     private final NailGroupRepository nailGroupRepository;
 
-    /**
-     * 사용자 선호 기반 추천 네일 세트 조회 (비동기, 최소 메모리 사용)
-     *
-     * @param userId 사용자 ID
-     * @param numSamples 추천 조합 수
-     * @param temperature softmax 온도 파라미터
-     * @return 추천 네일 세트 DTO 리스트
-     */
     public Mono<List<NailSetRecommendationDTO>> getRecommendedNailSets(int userId, int numSamples, double temperature) {
         return userPreferenceRepository.findAllByUserId(userId)
                 .collectList()
@@ -42,14 +34,26 @@ public class NailSetRecommendationService {
                     if (preferences.isEmpty()) {
                         return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자 선호 데이터가 없습니다."));
                     }
+
                     double[][] weightMatrix = buildWeightMatrix(preferences);
+                    System.out.println("📊 Weight Matrix 확인:");
+                    for (int i = 0; i < weightMatrix.length; i++) {
+                        System.out.println("  - " + Arrays.toString(weightMatrix[i]));
+                    }
+
                     int[][] combos = NailAttributeSampler.sampleNailAttributesFromMatrix(weightMatrix, numSamples, temperature);
+                    System.out.println("🎯 추천 조합:");
+                    for (int[] combo : combos) {
+                        System.out.println("  - Color: " + combo[0] + ", Shape: " + combo[1] + ", Category: " + combo[2]);
+                    }
+
                     return nailSetRepository.findAll()
                             .collectList()
                             .flatMap(allSets -> {
                                 if (allSets.isEmpty()) {
                                     return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "NailSet 데이터가 없습니다."));
                                 }
+
                                 return Flux.fromIterable(allSets)
                                         .flatMap(nailSet -> matchesAnyCombo(nailSet, combos)
                                                 .filter(match -> match)
@@ -66,6 +70,7 @@ public class NailSetRecommendationService {
                 });
     }
 
+
     private double[][] buildWeightMatrix(List<UserPreferences> preferences) {
         int numColors = 8;
         int numShapes = 5;
@@ -74,18 +79,16 @@ public class NailSetRecommendationService {
         matrix[0] = new double[numColors];
         matrix[1] = new double[numShapes];
         matrix[2] = new double[numCategories];
+
         for (UserPreferences up : preferences) {
             matrix[0][(int) up.getColor()] += 1;
             matrix[1][(int) up.getShape()] += 1;
             matrix[2][(int) up.getCategory()] += 1;
         }
+
         return matrix;
     }
 
-    /**
-     * NailSet의 NailGroup(손가락별 NailTip)을 조회하여,
-     * 각 손가락의 NailTip들이 추천 조합(색상, 쉐입, 패턴) 중 하나와 모두 매칭되는지 확인
-     */
     private Mono<Boolean> matchesAnyCombo(NailSet nailSet, int[][] combos) {
         return nailGroupRepository.findById(nailSet.getNailGroupId())
                 .flatMap(nailGroup -> {
@@ -100,7 +103,6 @@ public class NailSetRecommendationService {
                             .flatMap(tipId -> nailTipRepository.findById(tipId)
                                     .defaultIfEmpty(new NailTip(
                                             0,
-                                            // entity 패키지의 enum 사용
                                             NailShape.SQUARE,
                                             NailColor.WHITE,
                                             NailCategory.ONE_COLOR,
@@ -110,54 +112,60 @@ public class NailSetRecommendationService {
                             .collectList()
                             .map(tips -> {
                                 if (tips.stream().anyMatch(t -> t.getId() == 0)) {
+                                    System.out.println("⚠ NailTip 중 일부가 존재하지 않음: " + tips);
                                     return false;
                                 }
+
+                                System.out.println("🔍 [NailSet ID: " + nailSet.getId() + "] NailTips 확인:");
+                                for (NailTip tip : tips) {
+                                    System.out.printf("  - NailTip ID: %d, Color: %d, Shape: %d, Category: %d\n",
+                                            tip.getId(),
+                                            tip.getColor().getIndex(),
+                                            tip.getShape().getIndex(),
+                                            tip.getCategory().getIndex()
+                                    );
+                                }
+
+                                // **매칭 조건 완화**
+                                int matchCount = 0;
                                 for (NailTip tip : tips) {
                                     int colorIdx = tip.getColor().getIndex();
                                     int shapeIdx = tip.getShape().getIndex();
                                     int categoryIdx = tip.getCategory().getIndex();
-                                    boolean matchFound = false;
+
                                     for (int[] combo : combos) {
-                                        if (combo[0] == colorIdx && combo[1] == shapeIdx && combo[2] == categoryIdx) {
-                                            matchFound = true;
-                                            break;
+                                        if (combo[0] == colorIdx || combo[1] == shapeIdx || combo[2] == categoryIdx) {
+                                            matchCount++;
+                                            break; // 한 NailTip이 한 추천 조합과만 매칭되면 됨
                                         }
                                     }
-                                    if (!matchFound) {
-                                        return false;
-                                    }
                                 }
-                                return true;
+
+                                boolean isMatch = (matchCount >= 3); // 5개 중 최소 3개만 매칭되어도 추천 가능
+                                if (isMatch) {
+                                    System.out.println("✅ NailSet " + nailSet.getId() + "가 추천 조합과 부분 매칭됨!");
+                                } else {
+                                    System.out.println("❌ NailSet " + nailSet.getId() + "는 추천 조합과 매칭되지 않음.");
+                                }
+                                return isMatch;
                             });
                 })
                 .defaultIfEmpty(false);
     }
 
-    /**
-     * 추천 NailSet 리스트를 각 NailSet의 NailGroup 정보를 조회하여 DTO로 변환한 후,
-     * 스타일별로 그룹화하는 비동기 로직.
-     */
+
+
     private Mono<List<NailSetRecommendationDTO>> groupByStyleReactive(List<NailSet> sets) {
         return Flux.fromIterable(sets)
                 .flatMap(nailSet ->
                         nailGroupRepository.findById(nailSet.getNailGroupId())
                                 .flatMap(nailGroup ->
                                         Mono.zip(
-                                                nailTipRepository.findById(nailGroup.getFingerThumb())
-                                                        .map(NailTip::getImageUrl)
-                                                        .defaultIfEmpty("https://example.com/default_thumb.jpg"),
-                                                nailTipRepository.findById(nailGroup.getFingerIndex())
-                                                        .map(NailTip::getImageUrl)
-                                                        .defaultIfEmpty("https://example.com/default_index.jpg"),
-                                                nailTipRepository.findById(nailGroup.getFingerMiddle())
-                                                        .map(NailTip::getImageUrl)
-                                                        .defaultIfEmpty("https://example.com/default_middle.jpg"),
-                                                nailTipRepository.findById(nailGroup.getFingerRing())
-                                                        .map(NailTip::getImageUrl)
-                                                        .defaultIfEmpty("https://example.com/default_ring.jpg"),
-                                                nailTipRepository.findById(nailGroup.getFingerPinky())
-                                                        .map(NailTip::getImageUrl)
-                                                        .defaultIfEmpty("https://example.com/default_pinky.jpg")
+                                                nailTipRepository.findById(nailGroup.getFingerThumb()).map(NailTip::getImageUrl).defaultIfEmpty("https://example.com/default_thumb.jpg"),
+                                                nailTipRepository.findById(nailGroup.getFingerIndex()).map(NailTip::getImageUrl).defaultIfEmpty("https://example.com/default_index.jpg"),
+                                                nailTipRepository.findById(nailGroup.getFingerMiddle()).map(NailTip::getImageUrl).defaultIfEmpty("https://example.com/default_middle.jpg"),
+                                                nailTipRepository.findById(nailGroup.getFingerRing()).map(NailTip::getImageUrl).defaultIfEmpty("https://example.com/default_ring.jpg"),
+                                                nailTipRepository.findById(nailGroup.getFingerPinky()).map(NailTip::getImageUrl).defaultIfEmpty("https://example.com/default_pinky.jpg")
                                         ).map(tuple -> new NailSetRecommendationDTO.NailSetDTO(
                                                 nailSet.getId(),
                                                 new NailSetRecommendationDTO.NailImageDTO(tuple.getT1()),
@@ -169,15 +177,9 @@ public class NailSetRecommendationService {
                                 )
                 )
                 .collectList()
-                .map(list -> {
-                    Map<Integer, List<NailSetRecommendationDTO.NailSetDTO>> grouped =
-                            list.stream().collect(Collectors.groupingBy(dto -> (dto.getId() % 2 == 0) ? 3 : 1));
-                    List<NailSetRecommendationDTO> result = new ArrayList<>();
-                    grouped.forEach((styleId, dtos) -> {
-                        String styleName = (styleId == 1) ? "TREND" : (styleId == 3) ? "MODERN" : "UNKNOWN";
-                        result.add(new NailSetRecommendationDTO(new NailSetRecommendationDTO.StyleDTO(styleId, styleName), dtos));
-                    });
-                    return result;
-                });
+                .map(list -> list.stream().map(dto -> new NailSetRecommendationDTO(
+                        new NailSetRecommendationDTO.StyleDTO(dto.getId() % 2 == 0 ? 3 : 1, dto.getId() % 2 == 0 ? "MODERN" : "TREND"),
+                        List.of(dto)
+                )).collect(Collectors.toList()));
     }
 }

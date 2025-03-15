@@ -1,16 +1,14 @@
 package art.snail.naillian.backend.domain.nail.service;
 
-import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
-import art.snail.naillian.backend.domain.nail.entity.*;
+import art.snail.naillian.backend.domain.nail.entity.NailAssets;
+import art.snail.naillian.backend.domain.nail.entity.NailGroup;
+import art.snail.naillian.backend.domain.nail.entity.NailSet;
+import art.snail.naillian.backend.domain.nail.entity.NailTip;
 import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
-import art.snail.naillian.backend.domain.user.entity.UserPreferences;
-import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +19,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -31,8 +28,6 @@ public class NailService {
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
-    private final UserPreferenceRepository userPreferenceRepository;
-    private final NailSetRecommendationService nailSetRecommendationService;
 
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);
@@ -53,6 +48,17 @@ public class NailService {
     public Mono<NailGroup> getNailGroup(Integer id) {
         return groupRepository.findById(id);
     }
+
+    public Flux<NailTip> findAllById(List<Integer> ids) {
+        return tipRepository.findAllById(ids);
+    }
+
+    public Mono<NailTip> getNailTipById(int id) {
+        return tipRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "네일 팁을 찾을 수 없습니다.")));
+    }
+
+
 
     public Flux<NailTip> getNailsBySetId(Integer setId) {
         return this.getNailSet(setId)
@@ -99,43 +105,8 @@ public class NailService {
                 .flatMap(setRepository::save);
     }
 
-    /**
-     * 사용자가 선택한 네일 스타일(네일 팁 id 배열)을 저장.
-     */
-    public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
-        List<Integer> preferences = dto.getPreferences();
-        if (preferences.size() < 3) {
-            return Mono.error(new ReportableError(HttpStatus.UNPROCESSABLE_ENTITY, "최소 3개 이상의 네일을 선택해야 합니다."));
-        }
-        if (preferences.size() > 10) {
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "최대 10개까지 선택할 수 있습니다."));
-        }
-        return tipRepository.findAllById(preferences)
-                .collectList()
-                .flatMap(tips -> {
-                    if (tips.size() != preferences.size()) {
-                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "일부 네일 스타일을 찾을 수 없습니다."));
-                    }
-                    List<UserPreferences> newPreferences = tips.stream()
-                            .map(tip -> new UserPreferences(
-                                    null,
-                                    userId,
-                                    tip.getShape() != null ? tip.getShape().getIndex() : 0,
-                                    tip.getColor() != null ? tip.getColor().getIndex() : 0,
-                                    tip.getCategory() != null ? tip.getCategory().getIndex() : 0
-                            ))
-                            .collect(Collectors.toList());
-                    return userPreferenceRepository.deleteAllByUserId(userId)
-                            .then(userPreferenceRepository.saveAll(newPreferences).then());
-                });
+    public Flux<NailTip> findByCategoryColorShape(List<Integer> categoryIndices, List<Integer> colorIndices, List<Integer> shapeIndices) {
+        return tipRepository.findByCategoryColorShape(categoryIndices, colorIndices, shapeIndices);
     }
 
-    /**
-     * 추천 네일 세트 조회
-     */
-    public Mono<List<NailSetRecommendationDTO>> getNailSetRecommendations(int userId) {
-        int numSamples = 15;
-        double temperature = 1.0;
-        return nailSetRecommendationService.getRecommendedNailSets(userId, numSamples, temperature);
-    }
 }

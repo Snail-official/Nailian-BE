@@ -1,8 +1,11 @@
 package art.snail.naillian.backend.domain.nail.controller;
 
 import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
+import art.snail.naillian.backend.domain.nail.service.NailRecommendationService;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +15,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/nail-sets")
 @RequiredArgsConstructor
 public class NailSetController {
     private final NailService nailService;
+    private final NailRecommendationService recommendationService;
 
     @GetMapping("/{id}")
     public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> getNailSet(
@@ -45,5 +51,14 @@ public class NailSetController {
             @RequestParam("style") int style
     ) {
         throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    }
+
+    @GetMapping("/recommendations")
+    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getRecommendedNailSets(
+            UserAuthByTokenPayload payload,
+            @RequestParam(defaultValue = "5") int limit) {
+
+        return recommendationService.getRecommendedNailSets(payload.getUserId(), limit)
+                .map(recommendations -> CommonResponse.success(recommendations));
     }
 }

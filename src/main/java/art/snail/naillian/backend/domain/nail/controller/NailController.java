@@ -4,8 +4,9 @@ import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
+import art.snail.naillian.backend.domain.user.dto.SaveNailPreferencesDTO;
+import art.snail.naillian.backend.domain.user.service.UserNailPreferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class NailController {
     private final NailService nailService;
+    private final UserNailPreferenceService userNailPreferenceService;
 
     @GetMapping("/")
     public Mono<CommonResponse<Page<NailIdAndUrlDTO>>> getNails(Pageable page) {
@@ -28,20 +30,19 @@ public class NailController {
     }
 
     @GetMapping("/preferences")
-    public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getNailPreferences(Pageable pageable) {
-        return nailService.getNailTips(pageable)  // 모든 NailTip 데이터를 Pageable 기준으로 조회
-                .map(NailIdAndUrlDTO::from)
-                .collectList()
-                .map(list -> new PageDTO<>(list, pageable, list.size()))
+    public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getPreferences(UserAuthByTokenPayload payload,
+                                                                         Pageable page) {
+        return userNailPreferenceService.getUserPreferences(payload.getUserId(), page)
                 .map(CommonResponse::success);
     }
 
+
+
     @PostMapping("/preferences")
-    public Mono<CommonResponse<String>> saveNailPreferences(
-            UserAuthByTokenPayload payload,
-            @RequestBody SaveNailPreferencesDTO dto
-    ) {
-        return nailService.saveNailPreferences(payload.getUserId(), dto)
-                .then(Mono.just(CommonResponse.success("선호 취향 저장 성공", "네일 취향 저장 완료")));
+    public Mono<CommonResponse<String>> savePreferences(UserAuthByTokenPayload payload,
+                                                        @RequestBody SaveNailPreferencesDTO dto) {
+        return userNailPreferenceService.saveUserPreferences(payload.getUserId(), dto)
+                .map(result -> CommonResponse.success(null, result));
     }
+
 }

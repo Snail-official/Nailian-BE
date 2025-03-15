@@ -13,15 +13,14 @@ import art.snail.naillian.backend.domain.nail.entity.NailSet;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
 import art.snail.naillian.backend.domain.nail.repository.*;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
-import art.snail.naillian.backend.domain.nail.entity.*;
+import art.snail.naillian.backend.domain.nail.entity.NailAssets;
+import art.snail.naillian.backend.domain.nail.entity.NailGroup;
+import art.snail.naillian.backend.domain.nail.entity.NailSet;
+import art.snail.naillian.backend.domain.nail.entity.NailTip;
 import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
-import art.snail.naillian.backend.domain.user.entity.UserPreferences;
-import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -33,7 +32,6 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -66,6 +64,17 @@ public class NailService {
     public Mono<NailGroup> getNailGroup(Integer id) {
         return groupRepository.findById(id);
     }
+
+    public Flux<NailTip> findAllById(List<Integer> ids) {
+        return tipRepository.findAllById(ids);
+    }
+
+    public Mono<NailTip> getNailTipById(int id) {
+        return tipRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "네일 팁을 찾을 수 없습니다.")));
+    }
+
+
 
     public Flux<NailTip> getNailsBySetId(Integer setId) {
         return this.getNailSet(setId)
@@ -175,14 +184,8 @@ public class NailService {
                     return userPreferenceRepository.deleteAllByUserId(userId)
                             .then(userPreferenceRepository.saveAll(newPreferences).then());
                 });
+    public Flux<NailTip> findByCategoryColorShape(List<Integer> categoryIndices, List<Integer> colorIndices, List<Integer> shapeIndices) {
+        return tipRepository.findByCategoryColorShape(categoryIndices, colorIndices, shapeIndices);
     }
 
-    /**
-     * 추천 네일 세트 조회
-     */
-    public Mono<List<NailSetRecommendationDTO>> getNailSetRecommendations(int userId) {
-        int numSamples = 15;
-        double temperature = 1.0;
-        return nailSetRecommendationService.getRecommendedNailSets(userId, numSamples, temperature);
-    }
 }

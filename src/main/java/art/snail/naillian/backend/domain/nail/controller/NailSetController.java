@@ -5,7 +5,6 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -14,8 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/nail-sets")
@@ -33,14 +30,6 @@ public class NailSetController {
                 .collectList()
                 .map(list -> new NailSetEmbedDTO<>(id, list))
                 .map(CommonResponse::success);
-    }
-
-    @GetMapping("/recommendations")
-    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getRecommendedNailSets(
-            UserAuthByTokenPayload payload
-    ) {
-        return nailService.getNailSetRecommendations(payload.getUserId())
-                .map(list -> CommonResponse.success(list, "추천 네일 세트 조회 성공"));
     }
 
     @GetMapping("/{id}/similar")

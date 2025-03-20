@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 public interface NailSetRepository extends ReactiveCrudRepository<NailSet, Integer> {
     Flux<NailSet> findAllBy(Pageable page);
 
-    Flux<NailSet> findAllByUploadedBy(Integer uploadedUserId, Pageable page);
+    Flux<NailSet> findAllByUploadedBy(int uploadedUserId, Pageable page);
 
     Mono<NailSet> findByUploadedByAndNailGroupId(int uploadedUserId, int groupId);
 }

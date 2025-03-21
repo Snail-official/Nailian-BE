@@ -1,5 +1,6 @@
 package art.snail.naillian.backend.common;
 
+import art.snail.naillian.backend.domain.model.dto.ModelVersionDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class S3Service {
     @Value("${cloudfront.cdn}")
     private String cloudFrontCdn;
 
-    private static final String MODEL_METADATA_FILE = "model/model.json";
+    private static final String MODEL_METADATA_FILE = "model/models.json";
 
     /**
      * CloudFront에서 모델 메타데이터 JSON을 읽고 DTO로 변환하여 반환
@@ -31,8 +32,6 @@ public class S3Service {
      */
     public S3Service() {
         this.webClient = WebClient.builder()
-                // Reactive는 256kb 까지만 인메모리에 저장하므로 사전 인메모리 정의
-                // builder를 사용해서 기본적으로 http 리다이렉션(301)을 자동으로 처리하게끔 수정
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(5 * 1024 * 1024))
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create().followRedirect(true)))
                 .build();
@@ -42,7 +41,7 @@ public class S3Service {
      * CloudFront에서 모델 메타데이터 JSON을 읽고 DTO로 변환하여 반환
      * @return ModelVersionDTO
      */
-    public Mono<JsonNode> getModelMetadata() {
+    public Mono<ModelVersionDTO> getModelMetadata() {
         String metadataUrl = cloudFrontCdn + "/" + MODEL_METADATA_FILE;
 
         return webClient.get()
@@ -50,7 +49,7 @@ public class S3Service {
                 .header("Accept", "application/json")
                 .retrieve()
                 .bodyToMono(String.class)
-                .flatMap(json -> Mono.fromCallable(() -> objectMapper.readTree(json)))
+                .flatMap(json -> Mono.fromCallable(() -> objectMapper.readValue(json, ModelVersionDTO.class)))
                 .onErrorResume(e -> Mono.empty());
     }
 }

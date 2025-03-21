@@ -1,6 +1,7 @@
 package art.snail.naillian.backend.domain.model.controller;
 
 import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.domain.model.dto.ModelVersionDTO;
 import art.snail.naillian.backend.domain.model.service.ModelVersionService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,9 @@ public class ModelVersionController {
     private final ModelVersionService modelVersionService;
 
     @GetMapping("/version")
-    public Mono<CommonResponse<JsonNode>> getLatestModelVersion() {
+    public Mono<CommonResponse<ModelVersionDTO>> getLatestModelVersion() {
         return modelVersionService.getLatestModelVersion()
-                .map(jsonNode -> CommonResponse.success(jsonNode, "최신 모델 버전 조회 성공"))
-                .defaultIfEmpty(CommonResponse.fail(HttpStatus.NOT_FOUND,"최신 모델 정보를 찾을 수 없습니다."));
+                .map(dto -> CommonResponse.success(dto, "최신 모델 정보 조회 성공"))
+                .defaultIfEmpty(CommonResponse.fail(HttpStatus.NOT_FOUND, "최신 모델 정보를 찾을 수 없습니다."));
     }
 }

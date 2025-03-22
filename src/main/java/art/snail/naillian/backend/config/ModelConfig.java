@@ -1,9 +1,11 @@
 package art.snail.naillian.backend.config;
 
 import lombok.Getter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConfigurationProperties(prefix = "cloudfront")
 @Getter
 public class ModelConfig {
     private String s3ModelUrl;

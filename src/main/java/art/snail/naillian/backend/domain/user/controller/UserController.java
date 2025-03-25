@@ -8,6 +8,7 @@ import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.user.dto.CreateNailSetDTO;
 import art.snail.naillian.backend.domain.user.dto.UserChangeNicknameDTO;
 import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
+import art.snail.naillian.backend.domain.user.dto.UserScrapingNailSetIdDTO;
 import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -88,9 +89,29 @@ public class UserController {
                 .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
                 .map(CommonResponse::success);
     }
+
+    /**
+     * 사용자 보관함에 네일 세트 저장
+     */
+    @PostMapping("/me/nail-sets/save")
+    public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> scrapNailSet(
+            UserAuthByTokenPayload payload,
+            @RequestBody UserScrapingNailSetIdDTO requestBody
+    ) {
+        return userService.scrapNailSetForUser(payload.getUserId(), requestBody.getNailSetId())
+                .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
+                .map(CommonResponse::success);
+    }
+
+    /**
+     * 사용자 보관함에서 네일 세트 삭제
+     */
+    @DeleteMapping("/me/nail-sets/{id}")
+    public Mono<CommonResponse<Void>> unScrapNailSet(
+            UserAuthByTokenPayload payload,
+            @PathVariable("id") int setId
+    ) {
+        return userService.unScrapNailSetForUser(payload.getUserId(), setId)
+                .then(Mono.just(CommonResponse.success(null, "네일 세트가 보관함에서 삭제되었습니다.")));
+    }
 }
-
-
-
-
-

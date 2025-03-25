@@ -55,9 +55,11 @@ public class NailSetController {
     }
 
     @GetMapping("/feed")
-    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(
-            @RequestParam("style") int style
+    public Mono<CommonResponse<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(
+            @RequestParam("style") int style,
+            Pageable page
     ) {
-        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+        return nailService.getNailSetFeed(style, page)
+                .map(pageDTO -> CommonResponse.success(pageDTO, "네일 세트 피드 조회 성공"));
     }
 }

@@ -21,8 +21,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.Optional;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -115,6 +113,30 @@ public class UserService {
         return nailService.createUserNailSet(userId, tipIds)
                 .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
+
+    /**
+     * 사용자의 네일 세트 보관
+     *
+     * @return 복제된 네일 세트의 정보
+     */
+    public Mono<NailSetEmbedDTO<NailTip>> scrapNailSetForUser(Integer userId, Integer nailSetId) {
+        if (nailSetId == null)
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "네일 세트 아이디를 지정해주세요."));
+
+        return getUserById(userId)
+                .then(nailService.cloneNailSetForUser(userId, nailSetId))
+                .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
+    }
+
+    /**
+     * 사용자 네일 세트 보관 해제
+     */
+    public Mono<Void> unScrapNailSetForUser(Integer userId, Integer nailSetId) {
+        if (nailSetId == null)
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "네일 세트 아이디를 지정해주세요."));
+
+        return getUserById(userId)
+                .then(nailService.deleteNailSetEnsureUser(userId, nailSetId))
+                .then();
+    }
 }
-
-

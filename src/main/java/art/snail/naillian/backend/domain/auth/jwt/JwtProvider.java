@@ -17,8 +17,8 @@ import java.util.UUID;
 
 @Component
 public class JwtProvider {
-
     private final SecretKey key;
+
     private static final long ACCESS_EXPIRATION = 1000 * 60 * 30;
     private static final long REFRESH_EXPIRATION = 1000 * 60 * 60 * 24 * 7;
 

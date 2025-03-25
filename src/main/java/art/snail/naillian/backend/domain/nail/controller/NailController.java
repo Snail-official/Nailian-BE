@@ -32,11 +32,12 @@ public class NailController {
                 .map(CommonResponse::success);
     }
 
+    @Deprecated
     @GetMapping("/preferences")
     public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getUserNailPreferences(
             UserAuthByTokenPayload payload,
-            Pageable page) {
-
+            Pageable page
+    ) {
         return nailService.getUserNailPreferences(payload.getUserId(), page)
                 .map(pageDTO -> {
                     List<NailIdAndUrlDTO> dtos = pageDTO.getContent().stream()
@@ -47,6 +48,7 @@ public class NailController {
                 .map(CommonResponse::success);
     }
 
+    @Deprecated
     @PostMapping("/preferences")
     public Mono<CommonResponse<Void>> saveNailPreferences(
             UserAuthByTokenPayload payload,
@@ -55,27 +57,4 @@ public class NailController {
         return nailService.saveNailPreferences(payload.getUserId(), dto)
                 .then(Mono.just(CommonResponse.success(null, "선호 취향 저장 성공")));
     }
-//    @GetMapping("/preferences")
-//    public Mono<CommonResponse<PageDTO<NailIdAndUrlDTO>>> getUserNailPreferences(
-//            UserAuthByTokenPayload payload,
-//            Pageable page) {
-//
-//        return nailService.getUserNailPreferences(payload.getUserId(), page)
-//                .map(pageDTO -> {
-//                    List<NailIdAndUrlDTO> dtos = pageDTO.getContent().stream()
-//                            .map(NailIdAndUrlDTO::from)
-//                            .collect(Collectors.toList());
-//                    return new PageDTO<>(dtos, pageDTO.getPageable(), pageDTO.getTotalElements());
-//                })
-//                .map(CommonResponse::success);
-//    }
-//
-//    @PostMapping("/preferences")
-//    public Mono<CommonResponse<Void>> saveNailPreferences(
-//            UserAuthByTokenPayload payload,
-//            @RequestBody SaveNailPreferencesDTO dto
-//    ) {
-//        return nailService.saveNailPreferences(payload.getUserId(), dto)
-//                .then(Mono.just(CommonResponse.success(null, "선호 취향 저장 성공")));
-//    }
 }

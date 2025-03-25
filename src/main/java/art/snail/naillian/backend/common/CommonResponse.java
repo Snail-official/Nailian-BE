@@ -42,6 +42,7 @@ public class CommonResponse<T> {
                 .msg(message)
                 .build();
     }
+
     @JsonComponent
     static class Serializer extends JsonSerializer<CommonResponse<?>> {
         @Override

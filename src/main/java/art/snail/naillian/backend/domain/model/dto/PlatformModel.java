@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PlatformModel {
-
     private ModelDetail segmentation;
     private ModelDetail detection;
 }

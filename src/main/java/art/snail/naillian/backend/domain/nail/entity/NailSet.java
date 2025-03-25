@@ -19,9 +19,7 @@ public class NailSet {
     private Integer id;
 
     private Integer nailGroupId;
-
     private Integer uploadedBy;
-
     private LocalDateTime createdAt;
     private LocalDateTime deletedAt;
 }

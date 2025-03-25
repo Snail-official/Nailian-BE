@@ -16,7 +16,7 @@ import java.util.List;
 public class BannerService {
     private final BannerRepository bannerRepository;
 
-    public Mono<List<BannerResponse>> getHomeBanners(){
+    public Mono<List<BannerResponse>> getHomeBanners() {
         return bannerRepository.findAll()
                 .map(banner -> new BannerResponse(banner.getId(), banner.getImageUrl(), banner.getLink()))
                 .collectList()
@@ -28,6 +28,6 @@ public class BannerService {
 
     public Mono<CommonResponse<List<BannerResponse>>> getHomeBannersResponse() {
         return getHomeBanners()
-                .map(list -> CommonResponse.<List<BannerResponse>>success(list));
+                .map(CommonResponse::success);
     }
 }

@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/model")
 @RequiredArgsConstructor
 public class ModelVersionController {
-
     private final S3Service s3Service;
 
     @GetMapping("/version")

@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping
 @RequiredArgsConstructor
 public class OnboardingController {
-
     private final OnboardingService onboardingService;
 
     @GetMapping("/onboarding-status")

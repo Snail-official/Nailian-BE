@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class OnboardingService {
     private final UserService userService;
+
     /**
      * 유저 ID를 받아 다음 온보딩 스텝 결정
      * DB에서 유저 조회

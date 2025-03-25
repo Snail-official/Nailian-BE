@@ -13,9 +13,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table("nail_folder_set")
 public class NailFolderSet {
-
     @Id
     private Integer id;
+
     private Integer folderId;
     private Integer setId;
     private LocalDateTime createdAt;

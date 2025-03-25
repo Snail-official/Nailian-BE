@@ -8,7 +8,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integer> {
-
     Flux<NailTip> findAllBy(Pageable page);
 
     @Query("""

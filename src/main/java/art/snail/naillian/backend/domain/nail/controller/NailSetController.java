@@ -6,7 +6,6 @@ import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
-import art.snail.naillian.backend.domain.nail.service.NailRecommendationService;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NailSetController {
     private final NailService nailService;
-    private final NailRecommendationService recommendationService;
 
     @GetMapping("/{id}")
     public Mono<CommonResponse<NailSetEmbedDTO<NailImageUrlDTO>>> getNailSet(
@@ -65,7 +63,7 @@ public class NailSetController {
             UserAuthByTokenPayload payload,
             @RequestParam(defaultValue = "5") int limit) {
 
-        return recommendationService.getRecommendedNailSets(payload.getUserId(), limit)
-                .map(recommendations -> CommonResponse.success(recommendations));
+        return nailService.getRecommendedNailSets(payload.getUserId(), limit)
+                .map(recommendations -> CommonResponse.success(recommendations, "추천 네일 세트 조회 성공"));
     }
 }

@@ -1,26 +1,12 @@
 package art.snail.naillian.backend.domain.nail.service;
 
 import art.snail.naillian.backend.common.PageDTO;
-import art.snail.naillian.backend.domain.nail.common.NailCategory;
-import art.snail.naillian.backend.domain.nail.common.NailColor;
-import art.snail.naillian.backend.domain.nail.common.NailShape;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.entity.NailAssets;
-import art.snail.naillian.backend.domain.nail.entity.NailGroup;
-import art.snail.naillian.backend.domain.nail.entity.NailSet;
-import art.snail.naillian.backend.domain.nail.entity.NailTip;
+import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
+import art.snail.naillian.backend.domain.nail.entity.*;
 import art.snail.naillian.backend.domain.nail.repository.*;
-import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.entity.NailAssets;
-import art.snail.naillian.backend.domain.nail.entity.NailGroup;
-import art.snail.naillian.backend.domain.nail.entity.NailSet;
-import art.snail.naillian.backend.domain.nail.entity.NailTip;
-import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
+import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +18,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -43,7 +30,6 @@ public class NailService {
     private final NailGroupRepository groupRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository nailFolderSetRepository;
-    private final NailSetRecommendationService nailSetRecommendationService;
 
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);
@@ -155,37 +141,42 @@ public class NailService {
                 });
     }
 
-    /**
-     * 사용자가 선택한 네일 스타일(네일 팁 id 배열)을 저장.
-     */
-    public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
-        List<Integer> preferences = dto.getPreferences();
-        if (preferences.size() < 3) {
-            return Mono.error(new ReportableError(HttpStatus.UNPROCESSABLE_ENTITY, "최소 3개 이상의 네일을 선택해야 합니다."));
-        }
-        if (preferences.size() > 10) {
-            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "최대 10개까지 선택할 수 있습니다."));
-        }
-        return tipRepository.findAllById(preferences)
-                .collectList()
-                .flatMap(tips -> {
-                    if (tips.size() != preferences.size()) {
-                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "일부 네일 스타일을 찾을 수 없습니다."));
-                    }
-                    List<UserPreferences> newPreferences = tips.stream()
-                            .map(tip -> new UserPreferences(
-                                    null,
-                                    userId,
-                                    tip.getShape() != null ? tip.getShape().getIndex() : 0,
-                                    tip.getColor() != null ? tip.getColor().getIndex() : 0,
-                                    tip.getCategory() != null ? tip.getCategory().getIndex() : 0
-                            ))
-                            .collect(Collectors.toList());
-                    return userPreferenceRepository.deleteAllByUserId(userId)
-                            .then(userPreferenceRepository.saveAll(newPreferences).then());
-                });
-    public Flux<NailTip> findByCategoryColorShape(List<Integer> categoryIndices, List<Integer> colorIndices, List<Integer> shapeIndices) {
-        return tipRepository.findByCategoryColorShape(categoryIndices, colorIndices, shapeIndices);
+    public Mono<List<NailSetRecommendationDTO>> getRecommendedNailSets(int userId, int limit) {
+        return nailFolderSetRepository.findAll()
+                .groupBy(nfs -> nfs.getFolderId())
+                .flatMap(groupedFlux ->
+                        groupedFlux.collectList().flatMap(nfsList -> {
+                            Collections.shuffle(nfsList);
+                            List<NailFolderSet> selectedFolderSets = nfsList.stream()
+                                    .limit(limit)
+                                    .collect(Collectors.toList());
+                            return Flux.fromIterable(selectedFolderSets)
+                                    .flatMap(nfs ->
+                                            getNailSetWithNailTip(nfs.getSetId())
+                                                    .map(nailSetEmbed -> nailSetEmbed.transform(NailImageUrlDTO::from))
+                                    )
+                                    .collectList()
+                                    .map(nailSetEmbedDTOList -> {
+                                        List<NailSetRecommendationDTO.NailSetDTO> convertedList = nailSetEmbedDTOList.stream()
+                                                .map(embed -> new NailSetRecommendationDTO.NailSetDTO(
+                                                        embed.getId(),
+                                                        new NailSetRecommendationDTO.NailImageDTO(embed.getThumb().getImageUrl()),
+                                                        new NailSetRecommendationDTO.NailImageDTO(embed.getIndex().getImageUrl()),
+                                                        new NailSetRecommendationDTO.NailImageDTO(embed.getMiddle().getImageUrl()),
+                                                        new NailSetRecommendationDTO.NailImageDTO(embed.getRing().getImageUrl()),
+                                                        new NailSetRecommendationDTO.NailImageDTO(embed.getPinky().getImageUrl())
+                                                ))
+                                                .collect(Collectors.toList());
+                                        return new NailSetRecommendationDTO(
+                                                new NailSetRecommendationDTO.StyleDTO(
+                                                        Integer.valueOf(groupedFlux.key()),
+                                                        "Style " + groupedFlux.key()
+                                                ),
+                                                convertedList
+                                        );
+                                    });
+                        })
+                )
+                .collectList();
     }
-
 }

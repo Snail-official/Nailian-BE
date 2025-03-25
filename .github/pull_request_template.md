@@ -7,4 +7,4 @@ Pull Request 가 생성된 이후 Jira 에서 수정하는 내용은 반영되�
 ### 📝 추가 설명
 1. 추가 설명 1
 2. 추가 설명 2
-3. and so on ...
+3. and so on ..

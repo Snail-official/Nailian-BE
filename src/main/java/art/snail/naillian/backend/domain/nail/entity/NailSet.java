@@ -20,7 +20,6 @@ public class NailSet {
 
     private Integer nailGroupId;
 
-    private String name;
     private Integer uploadedBy;
 
     private LocalDateTime createdAt;

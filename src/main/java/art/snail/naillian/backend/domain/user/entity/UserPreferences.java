@@ -7,7 +7,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Data
@@ -18,13 +17,9 @@ public class UserPreferences {
     @Id
     private Integer id;
 
-
     private Integer userId;
-
     private double shape;
-
     private double color;
-
     private double category;
 
     public UserPreferences(Integer id, Integer userId, NailShape nailShape, NailColor nailColor, NailCategory nailCategory){

@@ -22,7 +22,6 @@ public class AuthenticationService {
     private final UserRepository userRepository;
     private final TokenService tokenService;
 
-
     /** Access Token 검증 및 사용자 ID 추출 */
     public Mono<Integer> extractUserIdFromToken(String accessToken) {
         return Mono.justOrEmpty(accessToken)

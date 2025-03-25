@@ -6,7 +6,6 @@ import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import reactor.core.publisher.Flux;
 
 public interface NailAssetRepository extends ReactiveCrudRepository<NailAssets, Integer> {
-
     Flux<NailAssets> findAllBy(Pageable page);
 
 }

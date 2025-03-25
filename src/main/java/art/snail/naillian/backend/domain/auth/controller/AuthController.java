@@ -18,9 +18,7 @@ import java.util.Map;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
     private static final Logger log = LoggerFactory.getLogger(KakaoAuthService.class);
-
 
     private final KakaoAuthService kakaoAuthService;
     private final AuthenticationService authenticationService;
@@ -31,7 +29,9 @@ public class AuthController {
                 .map(dto -> CommonResponse.success(dto, "카카오 로그인 성공"));
     }
 
-    /** Token 재발급 */
+    /**
+     * 토큰 재발급
+     */
     @PostMapping("/re-issue")
     public Mono<ResponseEntity<Map<String, Object>>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
@@ -44,6 +44,5 @@ public class AuthController {
         return authenticationService.logout(accessToken)
                 .map(body -> ResponseEntity.ok(body));
     }
-
 
 }

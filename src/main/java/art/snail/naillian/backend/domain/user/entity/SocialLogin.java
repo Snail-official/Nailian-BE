@@ -15,6 +15,7 @@ import org.springframework.data.relational.core.mapping.Table;
 public class SocialLogin {
     @Id
     private Integer id;
+
     private Integer userId;
     private String platform; // KAKAO
     private String platformUserId;

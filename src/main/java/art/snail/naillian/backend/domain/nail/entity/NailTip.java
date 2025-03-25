@@ -16,9 +16,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Table("nail_tip")
 public class NailTip {
-
     @Id
     private Integer id;
+
     private NailShape shape;
     private NailColor color;
     private NailCategory category;

@@ -10,7 +10,6 @@ import reactor.core.publisher.Mono;
 @Service
 @RequiredArgsConstructor
 public class S3Service {
-
     private final WebClient webClient;
     private final ModelConfig modelConfig;
 

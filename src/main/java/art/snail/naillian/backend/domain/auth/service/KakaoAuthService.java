@@ -28,8 +28,6 @@ import java.util.Date;
 @Service
 @RequiredArgsConstructor
 public class KakaoAuthService {
-
-
     private static final Logger log = LoggerFactory.getLogger(KakaoAuthService.class);
 
     private final WebClient webClient;

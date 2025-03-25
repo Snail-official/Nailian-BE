@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 public class User {
     @Id
     private Integer id;
+
     private String nickname;
     private UserType userType;
     private String registeredIp;

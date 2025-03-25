@@ -26,9 +26,9 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final NailService nailService;
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
-    private final NailService nailService;
 
     /**
      * 기존 회원 정보 불러오기

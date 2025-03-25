@@ -1,10 +1,11 @@
 package art.snail.naillian.backend.domain.auth.service;
 
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -17,14 +18,12 @@ public class TokenService {
         redisTemplate.opsForValue().set("refresh:" + userId, refreshToken, 7, TimeUnit.DAYS);
     }
 
-
     /** 유저ID에서 refreshToken 가져오기 */
     public Mono<Integer> getUserIdFromRefreshToken(String refreshToken) {
         return Mono.justOrEmpty(redisTemplate.opsForValue().get("refresh:" + refreshToken))
                 .map(Integer::parseInt)
                 .switchIfEmpty(Mono.empty());
     }
-
 
     /** RefreshToken 검증(AccessToken과 매칭) */
     public Mono<Boolean> validateRefreshToken(String refreshToken) {

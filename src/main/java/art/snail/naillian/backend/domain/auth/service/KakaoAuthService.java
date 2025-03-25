@@ -1,5 +1,6 @@
 package art.snail.naillian.backend.domain.auth.service;
 
+import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
 import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
@@ -20,8 +21,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 
 /** 카카오 API 처리만 담당 */
 
@@ -60,30 +59,14 @@ public class KakaoAuthService {
      * 5) "code, message, data" 형태의 Map 응답
      */
 
-    public Mono<Map<String, Object>> kakaoLogin(Map<String, String> body) {
-        // 여기서 body 검증
-        if (body == null || !body.containsKey("kakaoCode")) {
-            // 실패 응답 Map 만들어 반환
-            return Mono.just(buildErrorResponse(400, "카카오 인가코드(code)가 필요합니다."));
-        }
-
-        String kakaoCode = body.get("kakaoCode");
+    public Mono<UserTokenPairDTO> handleLoginByKakaoAccessToken(String kakaoToken) {
+        if (kakaoToken == null || kakaoToken.isEmpty())
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "카카오 액세스 토큰이 필요합니다."));
 
         // 이제 아래 로직들은 “인가코드 -> 액세스 토큰 -> 사용자 정보 -> 유저 생성/조회 -> 토큰 발급 -> 응답”
-        return getAccessTokenJson(kakaoCode)
-                .flatMap(this::extractAccessToken)
-                .flatMap(this::fetchKakaoUserInfo)
+        return this.fetchKakaoUserInfo(kakaoToken)
                 .flatMap(this::findOrCreateUser)
-                .map(this::issueTokenAndBuildSuccess)
-                .onErrorResume(e -> {
-                    // ReportableError라면 그대로 code, message 뽑아서 에러 응답 만듦
-                    if (e instanceof ReportableError) {
-                        ReportableError re = (ReportableError) e;
-                        return Mono.just(buildErrorResponse(re.getStatus().value(), re.getMessage()));
-                    }
-                    // 예상치 못한 예외 -> 500
-                    return Mono.just(buildErrorResponse(500, "서버 오류 발생: " + e.getMessage()));
-                });
+                .flatMap(this::issueTokenAndBuildSuccess);
     }
 
     /**
@@ -186,31 +169,12 @@ public class KakaoAuthService {
      * 4) JWT 발급 + Redis 저장
      */
 
-    private Map<String, Object> issueTokenAndBuildSuccess(User user){
+    private Mono<UserTokenPairDTO> issueTokenAndBuildSuccess(User user) {
         Date now = new Date();
         String accessToken = jwtProvider.generateAccessToken(user.getId(), now);
         String refreshToken = jwtProvider.generateRefreshToken(user.getId(), now);
 
         tokenService.storeTokenPair(accessToken, refreshToken, user.getId());
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("accessToken", accessToken);
-        data.put("refreshToken", refreshToken);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("code", 200);
-        response.put("message", "카카오 로그인 성공");
-        response.put("data", data);
-
-        return response;
-    }
-
-    // 에러 응답 바디
-    private Map<String, Object> buildErrorResponse(int code, String message) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("code", code);
-        body.put("message", message);
-        body.put("data", null);
-        return body;
+        return Mono.just(new UserTokenPairDTO(accessToken, refreshToken));
     }
 }

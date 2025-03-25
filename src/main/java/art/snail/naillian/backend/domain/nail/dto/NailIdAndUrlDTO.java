@@ -10,18 +10,21 @@ import lombok.Data;
 public class NailIdAndUrlDTO {
     private int id;
     private String imageUrl;
+    private String shape;
 
     public static NailIdAndUrlDTO from(NailAssets org) {
         return new NailIdAndUrlDTO(
                 org.getId(),
-                org.getImageUrl()
+                org.getImageUrl(),
+                org.getShape() != null ? org.getShape().name() : null
         );
     }
 
     public static NailIdAndUrlDTO from(NailTip org) {
         return new NailIdAndUrlDTO(
                 org.getId(),
-                org.getImageUrl()
+                org.getImageUrl(),
+                org.getShape() != null ? org.getShape().name() : null
         );
     }
 }

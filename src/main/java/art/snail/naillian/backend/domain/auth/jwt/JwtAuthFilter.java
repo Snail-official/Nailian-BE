@@ -31,11 +31,11 @@ public class JwtAuthFilter implements WebFilter {
     @Override
     @SuppressWarnings("all")
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        return Mono.justOrEmpty(exchange)
-                .flatMap(JwtAuthFilter::extractToken)
+        return extractToken(exchange)
                 .flatMap(JwtAuthFilter::extractTokenFromHeader)
                 .flatMap(jwtProvider::authUserByToken)
                 .flatMap(payload -> chain.filter(exchange).contextWrite(ReactiveSecurityContextHolder.withAuthentication(payload)))
-                .switchIfEmpty(chain.filter(exchange));
+                .switchIfEmpty(Mono.defer(() -> chain.filter(exchange).then(Mono.empty())))
+                ;
     }
 }

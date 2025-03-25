@@ -14,7 +14,7 @@ public interface NailFolderSetRepository extends ReactiveCrudRepository<NailFold
     @Query("""
             SELECT nfs.*
             FROM nail_folder_set nfs
-            WHERE nfs.id = :folderId
+            WHERE nfs.folder_id = :folderId
             ORDER BY RAND(:seed)
             LIMIT :limit
             """)

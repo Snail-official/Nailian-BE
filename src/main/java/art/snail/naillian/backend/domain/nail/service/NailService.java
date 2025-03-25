@@ -6,15 +6,13 @@ import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
 import art.snail.naillian.backend.domain.nail.dto.*;
 import art.snail.naillian.backend.domain.nail.entity.*;
-import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.nail.repository.*;
 import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -25,12 +23,13 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 public class NailService {
+    private static final Logger log = LoggerFactory.getLogger(NailService.class);
     private final NailAssetRepository assetRepository;
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
@@ -258,41 +257,23 @@ public class NailService {
         // 3개의 폴더 ID만 사용: 1, 2, 3
         List<Integer> folderIds = List.of(1, 2, 3);
 
-        return Flux.fromIterable(folderIds)
-                .flatMap(folderId ->
-                        // 각 폴더에 해당하는 모든 NailFolderSet을 조회 (페이지 없이 전체 조회)
-                        folderSetRepository.findAllByFolderId(folderId, Pageable.unpaged())
-                                .collectList()
-                                .flatMap(nfsList -> {
-                                    Collections.shuffle(nfsList);
-                                    List<NailFolderSet> selectedFolderSets = nfsList.stream()
-                                            .limit(limit)
-                                            .collect(Collectors.toList());
+        Flux<NailFolder> folderChain = Flux.fromIterable(folderIds)
+                .flatMapSequential(folderRepository::findById);
+        Flux<List<NailSetEmbedDTO<NailImageUrlDTO>>> entriesChain = Flux.fromIterable(folderIds)
+                .flatMapSequential(folderId -> folderSetRepository.findAllShuffledByFolderId(folderId, limit, ThreadLocalRandom.current().nextInt())
+                        .flatMap(nfs -> getNailSetWithNailTip(nfs.getSetId()))
+                        .map(dto -> dto.transform(NailImageUrlDTO::from))
+                        .collectList()
+                );
 
-                                    return Flux.fromIterable(selectedFolderSets)
-                                            .flatMap(nfs ->
-                                                    getNailSetWithNailTip(nfs.getSetId())
-                                                            .map(embed -> embed.transform(NailImageUrlDTO::from))
-                                            )
-                                            .collectList()
-                                            .flatMap(nailSetEmbedDTOList ->
-                                                    folderRepository.findById(folderId)
-                                                            .map(folder -> new NailSetRecommendationDTO(
-                                                                    new NailSetRecommendationDTO.StyleDTO(folder.getId().longValue(), folder.getName()),
-                                                                    nailSetEmbedDTOList.stream()
-                                                                            .map(embed -> new NailSetRecommendationDTO.NailSetDTO(
-                                                                                    embed.getId(),
-                                                                                    new NailSetRecommendationDTO.NailImageDTO(embed.getThumb().getImageUrl()),
-                                                                                    new NailSetRecommendationDTO.NailImageDTO(embed.getIndex().getImageUrl()),
-                                                                                    new NailSetRecommendationDTO.NailImageDTO(embed.getMiddle().getImageUrl()),
-                                                                                    new NailSetRecommendationDTO.NailImageDTO(embed.getRing().getImageUrl()),
-                                                                                    new NailSetRecommendationDTO.NailImageDTO(embed.getPinky().getImageUrl())
-                                                                            ))
-                                                                            .collect(Collectors.toList())
-                                                            ))
-                                            );
-                                })
-                )
+        return folderChain.zipWith(entriesChain)
+                .<NailSetRecommendationDTO>handle((tuple, sink) -> {
+                    sink.next(new NailSetRecommendationDTO(
+                            tuple.getT1().getId().longValue(),
+                            tuple.getT1().getName(),
+                            tuple.getT2()
+                    ));
+                })
                 .collectList();
     }
 

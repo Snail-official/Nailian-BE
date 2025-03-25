@@ -21,5 +21,33 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
         """)
     Mono<NailTip> findByShapeAndColorAndCategory(String shape, String color, String category);
 
+    @Query("""
+                SELECT *
+                FROM nail_tip
+                WHERE ('' = :shape or shape = :shape)
+                  AND ('' = :color or color = :color)
+                  AND ('' = :category or category = :category)
+                LIMIT :limit
+                OFFSET :offset
+            """)
+    Flux<NailTip> findAllFilteredByShapeAndColorAndCategory(
+            String shape,
+            String color,
+            String category,
+            int limit,
+            long offset
+    );
 
+    @Query("""
+                SELECT count(*)
+                FROM nail_tip
+                WHERE ('' = :shape or shape = :shape)
+                  AND ('' = :color or color = :color)
+                  AND ('' = :category or category = :category)
+            """)
+    Mono<Long> countFilteredByShapeAndColorAndCategory(
+            String shape,
+            String color,
+            String category
+    );
 }

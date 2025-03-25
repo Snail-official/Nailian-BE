@@ -8,7 +8,6 @@ import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
@@ -30,9 +29,6 @@ public class NailController {
             Pageable page
     ) {
         return nailService.getNailTipsByAttributes(shape, color, category, page)
-                .map(NailIdAndUrlDTO::from)
-                .collectList()
-                .map(list -> new PageDTO<>(list, page, list.size()))
                 .map(CommonResponse::success);
     }
 

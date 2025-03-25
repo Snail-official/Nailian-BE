@@ -4,9 +4,10 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.common.NailCategory;
 import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
+import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
+import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
@@ -16,6 +17,7 @@ import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -191,28 +193,16 @@ public class NailService {
                 });
     }
 
-    public Flux<NailTip> getNailTipsByAttributes(String shape, String color, String category, Pageable page) {
-        Flux<NailTip> nailTipFlux = tipRepository.findAllBy(page);
+    public Mono<Page<NailIdAndUrlDTO>> getNailTipsByAttributes(String shape, String color, String category, Pageable page) {
+        String searchingShape = (shape != null) ? shape : "";
+        String searchingColor = (color != null) ? color : "";
+        String searchingCategory = (category != null) ? category : "";
 
-        if (shape != null && !shape.isEmpty()) {
-            nailTipFlux = nailTipFlux.filter(nailTip ->
-                    nailTip.getShape() != null &&
-                            nailTip.getShape().name().equalsIgnoreCase(shape)
-            );
-        }
-        if (color != null && !color.isEmpty()) {
-            nailTipFlux = nailTipFlux.filter(nailTip ->
-                    nailTip.getColor() != null &&
-                            nailTip.getColor().name().equalsIgnoreCase(color)
-            );
-        }
-        if (category != null && !category.isEmpty()) {
-            nailTipFlux = nailTipFlux.filter(nailTip ->
-                    nailTip.getCategory() != null &&
-                            nailTip.getCategory().name().equalsIgnoreCase(category)
-            );
-        }
-
-        return nailTipFlux;
+        return tipRepository.findAllFilteredByShapeAndColorAndCategory(searchingShape, searchingColor, searchingCategory, page.getPageSize(), page.getOffset())
+                .map(NailIdAndUrlDTO::from)
+                .collectList()
+                .zipWith(tipRepository.countFilteredByShapeAndColorAndCategory(searchingShape, searchingColor, searchingCategory))
+                .handle((tuple, sink) -> sink.next(new PageDTO<>(tuple.getT1(), page, tuple.getT2())))
+                ;
     }
 }

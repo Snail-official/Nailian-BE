@@ -33,12 +33,18 @@ public class NailSetController {
     }
 
     @GetMapping("/{id}/similar")
-    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetSimilar(
+    public Mono<CommonResponse<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetSimilar(
             @PathVariable("id") Long id,
             @RequestParam("style") int style,
             Pageable page
     ) {
-        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+        return nailService.getNailSetSimilar(id, style, page)
+                .flatMap(pageDTO -> {
+                    if (pageDTO.getContent().isEmpty()) {
+                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "유사한 네일 세트를 찾을 수 없습니다."));
+                    }
+                    return Mono.just(CommonResponse.success(pageDTO, "유사한 네일 세트 조회 성공"));
+                });
     }
 
     @GetMapping("/recommendations")

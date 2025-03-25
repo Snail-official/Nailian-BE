@@ -11,8 +11,6 @@ import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -29,7 +27,6 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class NailService {
-    private static final Logger log = LoggerFactory.getLogger(NailService.class);
     private final NailAssetRepository assetRepository;
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;

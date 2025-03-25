@@ -1,5 +1,7 @@
 package art.snail.naillian.backend.domain.nail.service;
 
+import art.snail.naillian.backend.common.PageDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
@@ -9,6 +11,7 @@ import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
 import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
+import art.snail.naillian.backend.domain.nail.repository.*;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -28,6 +32,7 @@ public class NailService {
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
+    private final NailFolderSetRepository folderSetRepository;
 
     public Flux<NailAssets> getNailAssets(Pageable page) {
         return assetRepository.findAllBy(page);
@@ -73,7 +78,12 @@ public class NailService {
     public Mono<NailSetEmbedDTO<NailTip>> getNailSetWithNailTip(Integer setId) {
         return getNailsBySetId(setId)
                 .collectList()
-                .map(nailTips -> new NailSetEmbedDTO<>(setId, nailTips));
+                .flatMap(nailTips -> {
+                    if (nailTips.size() != 5) {
+                        return Mono.empty(); // 방어 코드 추가
+                    }
+                    return Mono.just(new NailSetEmbedDTO<>(setId, nailTips));
+                });
     }
 
     public Flux<NailSet> getUserNailSets(Integer userId, Pageable page) {
@@ -93,4 +103,25 @@ public class NailService {
                         .build())
                 .flatMap(setRepository::save);
     }
+
+    public Mono<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>> getNailSetFeed(int folderId, Pageable pageable) {
+        if (folderId <= 0) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "스타일을 지정해야 합니다."));
+        }
+        return folderSetRepository.findAllByFolderId(folderId, pageable)
+                .flatMap(nfs ->
+                        getNailSetWithNailTip(nfs.getSetId())
+                                .map(nailSetEmbed -> nailSetEmbed.transform(NailImageUrlDTO::from))
+                )
+                .collectList()
+                .flatMap(list -> {
+                    if (list.isEmpty()) {
+                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 스타일의 네일 세트를 찾을 수 없습니다."));
+                    }
+                    Collections.shuffle(list);
+                    return folderSetRepository.countByFolderId(folderId)
+                            .map(total -> new PageDTO<>(list, pageable, total));
+                });
+    }
+
 }

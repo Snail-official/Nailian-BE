@@ -1,6 +1,7 @@
 package art.snail.naillian.backend.domain.nail.controller;
 
 import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetRecommendationDTO;
@@ -48,9 +49,11 @@ public class NailSetController {
     }
 
     @GetMapping("/feed")
-    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(
-            @RequestParam("style") int style
+    public Mono<CommonResponse<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(
+            @RequestParam("style") int style,
+            Pageable page
     ) {
-        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+        return nailService.getNailSetFeed(style, page)
+                .map(pageDTO -> CommonResponse.success(pageDTO, "네일 세트 피드 조회 성공"));
     }
 }

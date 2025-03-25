@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/nail-sets")
 @RequiredArgsConstructor
@@ -48,10 +50,9 @@ public class NailSetController {
     }
 
     @GetMapping("/recommendations")
-    public Mono<CommonResponse<Iterable<NailSetRecommendationDTO>>> getNailSetRecommendations(
-            @RequestHeader("Authorization") String authToken
-    ) {
-        throw new ReportableError(HttpStatus.SERVICE_UNAVAILABLE, "not yet implemented");
+    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations() {
+        return nailService.getRecommendedNailSets(1)
+                .map(recommendations -> CommonResponse.success(recommendations, "추천 네일 세트 조회 성공"));
     }
 
     @GetMapping("/feed")

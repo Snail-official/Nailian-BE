@@ -12,6 +12,10 @@ import art.snail.naillian.backend.domain.nail.entity.NailAssets;
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
 import art.snail.naillian.backend.domain.nail.entity.NailSet;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
+import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.nail.repository.*;
 import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
@@ -36,7 +40,7 @@ public class NailService {
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
     private final UserPreferenceRepository userPreferenceRepository;
-    private final NailFolderSetRepository nailFolderSetRepository;
+    private final NailFolderSetRepository folderSetRepository;
 
     /**
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
@@ -199,7 +203,7 @@ public class NailService {
         if (folderId <= 0) {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "스타일을 지정해야 합니다."));
         }
-        return nailFolderSetRepository.findAllByFolderId(folderId, pageable)
+        return folderSetRepository.findAllByFolderId(folderId, pageable)
 
                 .filter(nfs -> !nfs.getSetId().equals(nailSetId.intValue()))
                 .flatMap(nfs ->
@@ -207,7 +211,7 @@ public class NailService {
                                 .map(nailSetEmbed -> nailSetEmbed.transform(NailImageUrlDTO::from))
                 )
                 .collectList()
-                .zipWith(nailFolderSetRepository.countByFolderId(folderId))
+                .zipWith(folderSetRepository.countByFolderId(folderId))
                 .map(tuple -> {
                     List<NailSetEmbedDTO<NailImageUrlDTO>> list = tuple.getT1();
 
@@ -217,6 +221,27 @@ public class NailService {
 
                     Collections.shuffle(list);
                     return new PageDTO<>(list, pageable, tuple.getT2());
+                });
+    }
+
+
+    public Mono<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>> getNailSetFeed(int folderId, Pageable pageable) {
+        if (folderId <= 0) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "스타일을 지정해야 합니다."));
+        }
+        return folderSetRepository.findAllByFolderId(folderId, pageable)
+                .flatMap(nfs ->
+                        getNailSetWithNailTip(nfs.getSetId())
+                                .map(nailSetEmbed -> nailSetEmbed.transform(NailImageUrlDTO::from))
+                )
+                .collectList()
+                .flatMap(list -> {
+                    if (list.isEmpty()) {
+                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 스타일의 네일 세트를 찾을 수 없습니다."));
+                    }
+                    Collections.shuffle(list);
+                    return folderSetRepository.countByFolderId(folderId)
+                            .map(total -> new PageDTO<>(list, pageable, total));
                 });
     }
 

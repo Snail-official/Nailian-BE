@@ -191,4 +191,28 @@ public class NailService {
                 });
     }
 
+    public Flux<NailTip> getNailTipsByAttributes(String shape, String color, String category, Pageable page) {
+        Flux<NailTip> nailTipFlux = tipRepository.findAllBy(page);
+
+        if (shape != null && !shape.isEmpty()) {
+            nailTipFlux = nailTipFlux.filter(nailTip ->
+                    nailTip.getShape() != null &&
+                            nailTip.getShape().name().equalsIgnoreCase(shape)
+            );
+        }
+        if (color != null && !color.isEmpty()) {
+            nailTipFlux = nailTipFlux.filter(nailTip ->
+                    nailTip.getColor() != null &&
+                            nailTip.getColor().name().equalsIgnoreCase(color)
+            );
+        }
+        if (category != null && !category.isEmpty()) {
+            nailTipFlux = nailTipFlux.filter(nailTip ->
+                    nailTip.getCategory() != null &&
+                            nailTip.getCategory().name().equalsIgnoreCase(category)
+            );
+        }
+
+        return nailTipFlux;
+    }
 }

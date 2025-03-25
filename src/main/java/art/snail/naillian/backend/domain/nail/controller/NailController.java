@@ -23,8 +23,13 @@ public class NailController {
     private final NailService nailService;
 
     @GetMapping("/")
-    public Mono<CommonResponse<Page<NailIdAndUrlDTO>>> getNails(Pageable page) {
-        return nailService.getNailTips(page)
+    public Mono<CommonResponse<Page<NailIdAndUrlDTO>>> getNails(
+            @RequestParam(value = "shape", required = false) String shape,
+            @RequestParam(value = "color", required = false) String color,
+            @RequestParam(value = "category", required = false) String category,
+            Pageable page
+    ) {
+        return nailService.getNailTipsByAttributes(shape, color, category, page)
                 .map(NailIdAndUrlDTO::from)
                 .collectList()
                 .map(list -> new PageDTO<>(list, page, list.size()))

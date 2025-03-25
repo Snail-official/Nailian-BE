@@ -8,23 +8,20 @@ import java.util.List;
 
 @Data
 @Getter
+@AllArgsConstructor
 public class NailSetRecommendationDTO {
-    private RecommendationStyleEntry style;
+    private StyleDTO style;
     private List<NailSetEmbedDTO<NailImageUrlDTO>> nailSets;
 
-    public NailSetRecommendationDTO(
-            Long id,
-            String name,
-            List<NailSetEmbedDTO<NailImageUrlDTO>> nailSets
-    ) {
-        this.style = new RecommendationStyleEntry(id, name);
+    public NailSetRecommendationDTO(Long id, String name, List<NailSetEmbedDTO<NailImageUrlDTO>> nailSets) {
+        this.style = new StyleDTO(id, name);
         this.nailSets = nailSets;
     }
 
     @Data
     @Getter
     @AllArgsConstructor
-    private static class RecommendationStyleEntry {
+    public static class StyleDTO {
         private Long id;
         private String name;
     }

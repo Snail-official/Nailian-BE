@@ -4,18 +4,8 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.common.NailCategory;
 import art.snail.naillian.backend.domain.nail.common.NailColor;
 import art.snail.naillian.backend.domain.nail.common.NailShape;
-import art.snail.naillian.backend.domain.nail.dto.NailIdAndUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
-import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.dto.SaveNailPreferencesDTO;
-import art.snail.naillian.backend.domain.nail.entity.NailAssets;
-import art.snail.naillian.backend.domain.nail.entity.NailGroup;
-import art.snail.naillian.backend.domain.nail.entity.NailSet;
-import art.snail.naillian.backend.domain.nail.entity.NailTip;
-import art.snail.naillian.backend.domain.nail.repository.NailAssetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailGroupRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailSetRepository;
-import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
+import art.snail.naillian.backend.domain.nail.dto.*;
+import art.snail.naillian.backend.domain.nail.entity.*;
 import art.snail.naillian.backend.domain.nail.repository.*;
 import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
@@ -31,6 +21,7 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 @Service
@@ -42,6 +33,7 @@ public class NailService {
     private final NailGroupRepository groupRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository folderSetRepository;
+    private final NailFolderRepository folderRepository;
 
     /**
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
@@ -224,7 +216,7 @@ public class NailService {
                     return new PageDTO<>(list, pageable, tuple.getT2());
                 });
     }
-  
+
     public Mono<Page<NailIdAndUrlDTO>> getNailTipsByAttributes(String shape, String color, String category, Pageable page) {
         String searchingShape = (shape != null) ? shape : "";
         String searchingColor = (color != null) ? color : "";
@@ -257,5 +249,30 @@ public class NailService {
                             .map(total -> new PageDTO<>(list, pageable, total));
                 });
     }
+
+    public Mono<List<NailSetRecommendationDTO>> getRecommendedNailSets(int limit) {
+        // 3개의 폴더 ID만 사용: 1, 2, 3
+        List<Integer> folderIds = List.of(1, 2, 3);
+
+        Flux<NailFolder> folderChain = Flux.fromIterable(folderIds)
+                .flatMapSequential(folderRepository::findById);
+        Flux<List<NailSetEmbedDTO<NailImageUrlDTO>>> entriesChain = Flux.fromIterable(folderIds)
+                .flatMapSequential(folderId -> folderSetRepository.findAllShuffledByFolderId(folderId, limit, ThreadLocalRandom.current().nextInt())
+                        .flatMap(nfs -> getNailSetWithNailTip(nfs.getSetId()))
+                        .map(dto -> dto.transform(NailImageUrlDTO::from))
+                        .collectList()
+                );
+
+        return folderChain.zipWith(entriesChain)
+                .<NailSetRecommendationDTO>handle((tuple, sink) -> {
+                    sink.next(new NailSetRecommendationDTO(
+                            tuple.getT1().getId().longValue(),
+                            tuple.getT1().getName(),
+                            tuple.getT2()
+                    ));
+                })
+                .collectList();
+    }
+
 
 }

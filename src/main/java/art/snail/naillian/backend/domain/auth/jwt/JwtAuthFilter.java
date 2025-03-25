@@ -34,8 +34,14 @@ public class JwtAuthFilter implements WebFilter {
         return extractToken(exchange)
                 .flatMap(JwtAuthFilter::extractTokenFromHeader)
                 .flatMap(jwtProvider::authUserByToken)
-                .flatMap(payload -> chain.filter(exchange).contextWrite(ReactiveSecurityContextHolder.withAuthentication(payload)))
-                .switchIfEmpty(Mono.defer(() -> chain.filter(exchange).then(Mono.empty())))
+                .flatMap(payload -> chain.filter(exchange)
+                        .contextWrite(ReactiveSecurityContextHolder.withAuthentication(payload))
+                        .then(Mono.just(true))
+                )
+                .switchIfEmpty(Mono.defer(() -> chain.filter(exchange))
+                        .then(Mono.just(false))
+                )
+                .then(Mono.empty())
                 ;
     }
 }

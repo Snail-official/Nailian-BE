@@ -11,6 +11,8 @@ import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,10 +29,12 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class NailService {
+    private static final Logger log = LoggerFactory.getLogger(NailService.class);
     private final NailAssetRepository assetRepository;
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
+    private final NailGroupCustomRepository groupCustomRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository folderSetRepository;
     private final NailFolderRepository folderRepository;
@@ -153,7 +157,7 @@ public class NailService {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "만들고자 하는 네일 그룹의 네일 아이디 개수는 5개이어야 합니다."));
 
         return Mono.just(NailGroup.fromList(tipIds))
-                .flatMap(groupRepository::save)
+                .flatMap(groupCustomRepository::saveOrGet)
                 .map(nailGroup -> NailSet.builder()
                         .nailGroupId(nailGroup.getId())
                         .uploadedBy(userId)

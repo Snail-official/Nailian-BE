@@ -49,11 +49,13 @@ public class NailSetController {
                 });
     }
 
-    @GetMapping("/recommendations")
-    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations() {
-        return nailService.getRecommendedNailSets(1)
+    @GetMapping("/nail-sets/recommendations")
+    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations(
+            @RequestParam(name = "limit", defaultValue = "10", required = false) int limit) {
+        return nailService.getRecommendedNailSets(limit)
                 .map(recommendations -> CommonResponse.success(recommendations, "추천 네일 세트 조회 성공"));
     }
+
 
     @GetMapping("/feed")
     public Mono<CommonResponse<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(

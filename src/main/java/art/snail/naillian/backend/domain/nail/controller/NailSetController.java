@@ -50,10 +50,18 @@ public class NailSetController {
     }
 
     @GetMapping("/recommendations")
-    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations() {
-        return nailService.getRecommendedNailSets(1)
+    public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations(
+            @RequestParam(name = "limit", defaultValue = "10", required = false) int limit) {
+
+        if (limit < 1 || limit > 20) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "limit은 1 이상 20 이하의 값이어야 합니다."));
+        }
+
+        return nailService.getRecommendedNailSets(limit)
                 .map(recommendations -> CommonResponse.success(recommendations, "추천 네일 세트 조회 성공"));
     }
+
+
 
     @GetMapping("/feed")
     public Mono<CommonResponse<PageDTO<NailSetEmbedDTO<NailImageUrlDTO>>>> getNailSetFeed(

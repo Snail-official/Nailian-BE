@@ -34,10 +34,10 @@ public class NailService {
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
     private final NailGroupRepository groupRepository;
-    private final NailGroupCustomRepository groupCustomRepository;
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository folderSetRepository;
     private final NailFolderRepository folderRepository;
+    private final NailCustomRepository customRepository;
 
     /**
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
@@ -157,7 +157,11 @@ public class NailService {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "만들고자 하는 네일 그룹의 네일 아이디 개수는 5개이어야 합니다."));
 
         return Mono.just(NailGroup.fromList(tipIds))
-                .flatMap(groupCustomRepository::saveOrGet)
+                .flatMap(template -> customRepository.checkUserHasNailSetByTemplate(userId, template)
+                        .filter(hasSet -> !hasSet)
+                        .flatMap(flag -> customRepository.saveOrGetNailGroup(template))
+                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.CONFLICT, "이미 존재하는 네일 세트입니다.")))
+                )
                 .map(nailGroup -> NailSet.builder()
                         .nailGroupId(nailGroup.getId())
                         .uploadedBy(userId)

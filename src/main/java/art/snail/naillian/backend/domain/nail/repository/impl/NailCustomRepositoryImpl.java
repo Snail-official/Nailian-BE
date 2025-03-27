@@ -1,7 +1,7 @@
 package art.snail.naillian.backend.domain.nail.repository.impl;
 
 import art.snail.naillian.backend.domain.nail.entity.NailGroup;
-import art.snail.naillian.backend.domain.nail.repository.NailGroupCustomRepository;
+import art.snail.naillian.backend.domain.nail.repository.NailCustomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.r2dbc.convert.MappingR2dbcConverter;
 import org.springframework.data.r2dbc.repository.Modifying;
@@ -12,7 +12,19 @@ import reactor.core.publisher.Mono;
 
 @Repository
 @RequiredArgsConstructor
-public class NailGroupCustomRepositoryImpl implements NailGroupCustomRepository {
+public class NailCustomRepositoryImpl implements NailCustomRepository {
+    private static final String QUERY_CHECK_USER_NAIL_SET = """
+            SELECT EXISTS(SELECT s.id
+            FROM nail_set s
+            LEFT JOIN nail_group g ON s.nail_group_id = g.id
+            WHERE s.deleted_at IS NULL
+              AND s.uploaded_by = :userId
+              AND g.finger_thumb = :f1
+              AND g.finger_index = :f2
+              AND g.finger_middle = :f3
+              AND g.finger_ring = :f4
+              AND g.finger_pinky = :f5) AS `exist`;""";
+
     private static final String QUERY_SAVE_OR_GET = """
             BEGIN NOT ATOMIC
                  DECLARE GROUP_ID INT;
@@ -28,6 +40,7 @@ public class NailGroupCustomRepositoryImpl implements NailGroupCustomRepository 
                      SELECT * FROM nail_group WHERE id = GROUP_ID;
                  END IF;
              END;""";
+
     private final DatabaseClient client;
     private final MappingR2dbcConverter converter;
 
@@ -40,7 +53,7 @@ public class NailGroupCustomRepositoryImpl implements NailGroupCustomRepository 
     @Transactional
     @Modifying
     @Override
-    public Mono<NailGroup> saveOrGet(NailGroup groupTemplate) {
+    public Mono<NailGroup> saveOrGetNailGroup(NailGroup groupTemplate) {
         return client.sql(QUERY_SAVE_OR_GET)
                 .bind("f1", groupTemplate.getFingerThumb())
                 .bind("f2", groupTemplate.getFingerIndex())
@@ -48,6 +61,21 @@ public class NailGroupCustomRepositoryImpl implements NailGroupCustomRepository 
                 .bind("f4", groupTemplate.getFingerRing())
                 .bind("f5", groupTemplate.getFingerPinky())
                 .map((row, meta) -> converter.read(NailGroup.class, row, meta))
+                .one()
+                .single()
+                ;
+    }
+
+    @Override
+    public Mono<Boolean> checkUserHasNailSetByTemplate(int userId, NailGroup template) {
+        return client.sql(QUERY_CHECK_USER_NAIL_SET)
+                .bind("userId", userId)
+                .bind("f1", template.getFingerThumb())
+                .bind("f2", template.getFingerIndex())
+                .bind("f3", template.getFingerMiddle())
+                .bind("f4", template.getFingerRing())
+                .bind("f5", template.getFingerPinky())
+                .map((row, meta) -> converter.read(Boolean.class, row, meta))
                 .one()
                 .single()
                 ;

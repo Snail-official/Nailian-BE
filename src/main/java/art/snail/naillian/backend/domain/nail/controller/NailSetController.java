@@ -49,7 +49,7 @@ public class NailSetController {
                 });
     }
 
-    @GetMapping("/nail-sets/recommendations")
+    @GetMapping("/recommendations")
     public Mono<CommonResponse<List<NailSetRecommendationDTO>>> getNailSetRecommendations(
             @RequestParam(name = "limit", defaultValue = "10", required = false) int limit) {
 

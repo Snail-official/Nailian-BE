@@ -1,7 +1,8 @@
 package art.snail.naillian.backend.domain.user.service;
 
+import art.snail.naillian.backend.common.PageDTO;
+import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.nail.entity.NailSet;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
@@ -10,10 +11,10 @@ import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
@@ -100,10 +101,16 @@ public class UserService {
     /**
      * 사용자의 네일 세트 조회
      */
-    public Flux<NailSetEmbedDTO<NailTip>> getUserNailSet(Integer userId, Pageable page) {
-        return nailService.getUserNailSets(userId, page)
-                .map(NailSet::getId)
-                .flatMap(nailService::getNailSetWithNailTip);
+    public Mono<Page<NailSetEmbedDTO<NailImageUrlDTO>>> getUserNailSet(Integer userId, Pageable page) {
+        return nailService.getUserNailSetCount(userId)
+                .flatMap(count -> (count == 0)
+                        ? Mono.just(new PageDTO<>(List.of(), page, 0))
+                        : nailService.getUserNailSets(userId, page)
+                        .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()))
+                        .map(dto -> dto.transform(NailImageUrlDTO::from))
+                        .collectList()
+                        .map(list -> new PageDTO<>(list, page, count))
+                );
     }
 
     /**

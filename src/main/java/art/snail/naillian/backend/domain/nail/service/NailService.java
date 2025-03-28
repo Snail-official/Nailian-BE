@@ -147,6 +147,9 @@ public class NailService {
                 });
     }
 
+    public Mono<Long> getUserNailSetCount(Integer userId) {
+        return setRepository.countByUploadedBy(userId);
+    }
 
     public Flux<NailSet> getUserNailSets(Integer userId, Pageable page) {
         return setRepository.findAllByUploadedBy(userId, page);

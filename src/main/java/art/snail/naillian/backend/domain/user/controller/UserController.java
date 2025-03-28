@@ -12,6 +12,7 @@ import art.snail.naillian.backend.domain.user.dto.UserScrapingNailSetIdDTO;
 import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -67,14 +68,12 @@ public class UserController {
      * 사용자의 네일 세트 조회
      */
     @GetMapping("/me/nail-sets")
-    public Mono<CommonResponse<Iterable<NailSetEmbedDTO<NailImageUrlDTO>>>> getUserNailSets(
+    public Mono<CommonResponse<Page<NailSetEmbedDTO<NailImageUrlDTO>>>> getUserNailSets(
             UserAuthByTokenPayload payload,
             Pageable page
     ) {
         return userService.getUserNailSet(payload.getUserId(), page)
-                .map(tipEmbedDto -> tipEmbedDto.transform((tip) -> new NailImageUrlDTO(tip.getImageUrl())))
-                .collectList()
-                .map(CommonResponse::success);
+                .map(dto -> CommonResponse.success(dto, "사용자 네일 세트 조회 성공"));
     }
 
     /**

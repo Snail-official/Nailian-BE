@@ -11,5 +11,7 @@ public interface NailSetRepository extends ReactiveCrudRepository<NailSet, Integ
 
     Flux<NailSet> findAllByUploadedBy(int uploadedUserId, Pageable page);
 
+    Mono<Long> countByUploadedBy(int uploadedUserId);
+
     Mono<NailSet> findByUploadedByAndNailGroupId(int uploadedUserId, int groupId);
 }

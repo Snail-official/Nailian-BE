@@ -11,6 +11,8 @@ import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class NailService {
+    private static final Logger log = LoggerFactory.getLogger(NailService.class);
     private final NailAssetRepository assetRepository;
     private final NailTipRepository tipRepository;
     private final NailSetRepository setRepository;
@@ -34,6 +37,7 @@ public class NailService {
     private final UserPreferenceRepository userPreferenceRepository;
     private final NailFolderSetRepository folderSetRepository;
     private final NailFolderRepository folderRepository;
+    private final NailCustomRepository customRepository;
 
     /**
      * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
@@ -153,7 +157,11 @@ public class NailService {
             return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "만들고자 하는 네일 그룹의 네일 아이디 개수는 5개이어야 합니다."));
 
         return Mono.just(NailGroup.fromList(tipIds))
-                .flatMap(groupRepository::save)
+                .flatMap(template -> customRepository.checkUserHasNailSetByTemplate(userId, template)
+                        .filter(hasSet -> !hasSet)
+                        .flatMap(flag -> customRepository.saveOrGetNailGroup(template))
+                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.CONFLICT, "이미 존재하는 네일 세트입니다.")))
+                )
                 .map(nailGroup -> NailSet.builder()
                         .nailGroupId(nailGroup.getId())
                         .uploadedBy(userId)

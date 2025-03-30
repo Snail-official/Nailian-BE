@@ -14,4 +14,7 @@ public interface NailSetRepository extends ReactiveCrudRepository<NailSet, Integ
     Mono<Long> countByUploadedBy(int uploadedUserId);
 
     Mono<NailSet> findByUploadedByAndNailGroupId(int uploadedUserId, int groupId);
+
+    Mono<Boolean> existsByUploadedByAndNailGroupId(int uploadedBy, int groupId);
+
 }

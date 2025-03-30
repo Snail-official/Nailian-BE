@@ -183,15 +183,19 @@ public class NailService {
         return getNailSet(setId)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 네일 세트를 찾을 수 없습니다.")))
                 .flatMap(originalSet ->
-                        // 이미 저장한 적 있는 경우 이미 저장된 정보를 제공함
-                        setRepository.findByUploadedByAndNailGroupId(userId, originalSet.getNailGroupId())
-                                // 저장한 적 없는 경우 새로 저장함
-                                .switchIfEmpty(setRepository.save(NailSet.builder()
+                        // 존재 여부를 Boolean으로 조회하여 처리
+                        setRepository.existsByUploadedByAndNailGroupId(userId, originalSet.getNailGroupId())
+                                .flatMap(exists -> exists
+                                        ? Mono.error(new ReportableError(HttpStatus.CONFLICT, "이미 저장된 네일 세트입니다."))
+                                        : setRepository.save(NailSet.builder()
                                         .nailGroupId(originalSet.getNailGroupId())
                                         .uploadedBy(userId)
-                                        .build()))
+                                        .build())
+                                )
                 );
     }
+
+
 
     public Mono<NailSet> deleteNailSetEnsureUser(int userId, int setId) {
         return getNailSet(setId)

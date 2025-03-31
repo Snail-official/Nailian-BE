@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -179,22 +180,22 @@ public class NailService {
      * @param setId  네일 세트의 id, 유효성을 검증함
      * @return 새로 생성되거나 이미 보관했던 네일 세트 정보
      */
+    @Transactional
     public Mono<NailSet> cloneNailSetForUser(int userId, int setId) {
         return getNailSet(setId)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 네일 세트를 찾을 수 없습니다.")))
-                .flatMap(originalSet ->
-                        // 존재 여부를 Boolean으로 조회하여 처리
-                        setRepository.existsByUploadedByAndNailGroupId(userId, originalSet.getNailGroupId())
-                                .flatMap(exists -> exists
-                                        ? Mono.error(new ReportableError(HttpStatus.CONFLICT, "이미 저장된 네일 세트입니다."))
-                                        : setRepository.save(NailSet.builder()
-                                        .nailGroupId(originalSet.getNailGroupId())
-                                        .uploadedBy(userId)
-                                        .build())
-                                )
-                );
+                .flatMap(originalSet -> setRepository.existsByUploadedByAndNailGroupId(userId, originalSet.getNailGroupId())
+                        .filter(exists -> !exists)
+                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.CONFLICT, "이미 저장된 네일 세트입니다.")))
+                        .then(Mono.just(originalSet))
+                )
+                .map(originalSet -> NailSet.builder()
+                        .nailGroupId(originalSet.getNailGroupId())
+                        .uploadedBy(userId)
+                        .build())
+                .flatMap(setRepository::save)
+                ;
     }
-
 
 
     public Mono<NailSet> deleteNailSetEnsureUser(int userId, int setId) {

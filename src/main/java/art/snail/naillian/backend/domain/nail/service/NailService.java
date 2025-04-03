@@ -1,9 +1,6 @@
 package art.snail.naillian.backend.domain.nail.service;
 
 import art.snail.naillian.backend.common.PageDTO;
-import art.snail.naillian.backend.domain.nail.common.NailCategory;
-import art.snail.naillian.backend.domain.nail.common.NailColor;
-import art.snail.naillian.backend.domain.nail.common.NailShape;
 import art.snail.naillian.backend.domain.nail.dto.*;
 import art.snail.naillian.backend.domain.nail.entity.*;
 import art.snail.naillian.backend.domain.nail.repository.*;
@@ -41,25 +38,17 @@ public class NailService {
     private final NailCustomRepository customRepository;
 
     /**
-     * UserPreferences 엔티티에는 NailTip id가 저장되지 않고, 네일 스타일의 속성인 shape, color, category가 저장 돼있으므로
-     * 해당 속성들을 이용해 NailTip을 조회해야 함
+     * 사용자의 취향으로 저장된 {@link NailTip} 을 가져옴
+     * @return {@link PageDTO} of {@link NailTip}
      */
     public Mono<PageDTO<NailTip>> getUserNailPreferences(int userId, Pageable pageable) {
-        return userPreferenceRepository.countByUserId(userId)
-                .flatMap(totalElements ->
-                        userPreferenceRepository.findAllByUserId(userId, pageable)
-                                .flatMap(this::convertUserPrefToNailTip)
-                                .collectList()
-                                .map(list -> new PageDTO<>(list, pageable, totalElements))
-                );
-    }
-
-    private Mono<NailTip> convertUserPrefToNailTip(UserPreferences up) {
-        return tipRepository.findByShapeAndColorAndCategory(
-                NailShape.values()[(int) up.getShape()].name().toLowerCase(),
-                NailColor.values()[(int) up.getColor()].name().toLowerCase(),
-                NailCategory.values()[(int) up.getCategory()].name().toLowerCase()
-        );
+        return userPreferenceRepository.findAllByUserId(userId, pageable)
+                .map(UserPreferences::getTipId)
+                .collectList()
+                .flatMap(tipIds -> tipRepository.findAllById(tipIds).collectList())
+                .zipWith(userPreferenceRepository.countByUserId(userId))
+                .map((tuple) -> new PageDTO<NailTip>(tuple.getT1(), pageable, tuple.getT2()))
+                ;
     }
 
     /**

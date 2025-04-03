@@ -39,6 +39,7 @@ public class NailService {
 
     /**
      * 사용자의 취향으로 저장된 {@link NailTip} 을 가져옴
+     *
      * @return {@link PageDTO} of {@link NailTip}
      */
     public Mono<PageDTO<NailTip>> getUserNailPreferences(int userId, Pageable pageable) {
@@ -56,7 +57,7 @@ public class NailService {
      * 조건 : 최소 3개 이상 네일 스타일 및 최대 10개까지
      * 요청받은 각 네일 스타일 id를 기준으로 네일팁 조회
      */
-
+    @Transactional
     public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
         List<Integer> preferences = dto.getPreferences();
 
@@ -67,18 +68,18 @@ public class NailService {
 
         return tipRepository.findAllById(preferences)
                 .collectList()
-                .flatMap(tips -> {
-                    if (tips.size() != preferences.size()) {
-                        return Mono.error(new ReportableError(HttpStatus.NOT_FOUND,
-                                "일부 네일 스타일을 찾을 수 없습니다."));
-                    }
-                    List<UserPreferences> newPreferences = tips.stream()
-                            .map(tip -> new UserPreferences(userId, tip))
-                            .toList();
+                .filter(tips -> tips.size() == preferences.size())
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "일부 네일 스타일을 찾을 수 없습니다.")))
+                .flatMap(tips -> Mono.just(tips.parallelStream()
+                        .map(tip -> new UserPreferences(userId, tip))
+                        .toList()))
+                .flatMap(newPreferences -> replaceUserNailPreferences(userId, newPreferences));
+    }
 
-                    return userPreferenceRepository.deleteAllByUserId(userId)
-                            .then(userPreferenceRepository.saveAll(newPreferences).then());
-                });
+    private Mono<Void> replaceUserNailPreferences(int userId, List<UserPreferences> preferences) {
+        return userPreferenceRepository.deleteAllByUserId(userId)
+                .thenMany(userPreferenceRepository.saveAll(preferences))
+                .then();
     }
 
     public Flux<NailAssets> getNailAssets(Pageable page) {

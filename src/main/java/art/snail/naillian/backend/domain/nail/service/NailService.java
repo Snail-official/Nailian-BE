@@ -66,7 +66,6 @@ public class NailService {
      * 사용자가 선택한 네일 스타일을 저장함
      * 조건 : 최소 3개 이상 네일 스타일 및 최대 10개까지
      * 요청받은 각 네일 스타일 id를 기준으로 네일팁 조회
-     * 네일팁 속성(enum의 ordinal 값을 double로 변환) 이용해 UserPreferences 엔티티 생성 후 저장
      */
 
     public Mono<Void> saveNailPreferences(int userId, SaveNailPreferencesDTO dto) {
@@ -85,10 +84,7 @@ public class NailService {
                                 "일부 네일 스타일을 찾을 수 없습니다."));
                     }
                     List<UserPreferences> newPreferences = tips.stream()
-                            .map(tip -> new UserPreferences(null, userId,
-                                    tip.getShape(),
-                                    tip.getColor(),
-                                    tip.getCategory()))
+                            .map(tip -> new UserPreferences(userId, tip))
                             .toList();
 
                     return userPreferenceRepository.deleteAllByUserId(userId)

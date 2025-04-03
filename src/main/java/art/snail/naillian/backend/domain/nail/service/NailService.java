@@ -70,9 +70,9 @@ public class NailService {
                 .collectList()
                 .filter(tips -> tips.size() == preferences.size())
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "일부 네일 스타일을 찾을 수 없습니다.")))
-                .flatMap(tips -> Mono.just(tips.parallelStream()
-                        .map(tip -> new UserPreferences(userId, tip))
-                        .toList()))
+                .flatMapMany(Flux::fromIterable)
+                .map(tip -> new UserPreferences(userId, tip))
+                .collectList()
                 .flatMap(newPreferences -> replaceUserNailPreferences(userId, newPreferences));
     }
 

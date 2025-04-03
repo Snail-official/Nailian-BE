@@ -34,6 +34,7 @@ public class CursorPageDTO<T> extends PageImpl<T> {
                 gen.writeFieldName("pageInfo");
                 gen.writeStartObject();
                 gen.writeNumberField("totalElements", page.getTotalElements());
+                gen.writeNumberField("totalPages", page.getTotalPages());
                 gen.writeStringField("cursor", page.getCursor());
                 gen.writeEndObject();
             }

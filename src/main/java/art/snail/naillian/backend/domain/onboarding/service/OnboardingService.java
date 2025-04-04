@@ -6,8 +6,11 @@ import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -21,16 +24,17 @@ public class OnboardingService {
     public Mono<OnboardingStep> getNextOnboardingStep(int userId, int maxSupportedVersion) {
         return userService.getUserById(userId)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")))
-                .map(user -> calculateNextStep(user, maxSupportedVersion));
+                .flatMap(user -> Mono.justOrEmpty(Optional.ofNullable(calculateNextStep(user, maxSupportedVersion))));
     }
 
+    @Nullable
     private OnboardingStep calculateNextStep(User user, int maxSupportedVersion) {
         for (OnboardingStep step : OnboardingStep.values()) {
             if (maxSupportedVersion >= step.getRequiredVersion() && needsOnboarding(user, step))
                 return step;
         }
 
-        throw new ReportableError(HttpStatus.NO_CONTENT, "이미 모든 온보딩을 완료했습니다.");
+        return null;
     }
 
     public static boolean needsOnboarding(User user, OnboardingStep step) {

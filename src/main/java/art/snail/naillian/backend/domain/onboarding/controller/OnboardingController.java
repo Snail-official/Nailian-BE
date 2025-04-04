@@ -28,6 +28,7 @@ public class OnboardingController {
                 .map(UserAuthByTokenPayload::getUserId)
                 .flatMap(userId -> onboardingService.getNextOnboardingStep(userId, maxSupportedVersion))
                 .map(OnboardingStepDTO::new)
+                .switchIfEmpty(Mono.just(new OnboardingStepDTO(null)))
                 .map(CommonResponse::success);
     }
 }

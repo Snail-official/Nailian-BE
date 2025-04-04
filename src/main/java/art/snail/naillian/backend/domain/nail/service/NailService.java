@@ -4,8 +4,11 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.*;
 import art.snail.naillian.backend.domain.nail.entity.*;
 import art.snail.naillian.backend.domain.nail.repository.*;
+import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
+import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
 import art.snail.naillian.backend.domain.user.entity.UserPreferences;
 import art.snail.naillian.backend.domain.user.repository.UserPreferenceRepository;
+import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -36,6 +39,7 @@ public class NailService {
     private final NailFolderSetRepository folderSetRepository;
     private final NailFolderRepository folderRepository;
     private final NailCustomRepository customRepository;
+    private final UserRepository userRepository;
 
     /**
      * 사용자의 취향으로 저장된 {@link NailTip} 을 가져옴
@@ -73,7 +77,18 @@ public class NailService {
                 .flatMapMany(Flux::fromIterable)
                 .map(tip -> new UserPreferences(userId, tip))
                 .collectList()
-                .flatMap(newPreferences -> replaceUserNailPreferences(userId, newPreferences));
+                .flatMap(newPreferences -> replaceUserNailPreferences(userId, newPreferences)
+                )
+                .then(
+                        userRepository.findById(userId)
+                                .flatMap(user -> {
+                                    boolean marked = OnboardingService.markOnboardingComplete(user, OnboardingStep.PREFERENCES);
+                                    if (marked) {
+                                        return userRepository.save(user).then();
+                                    }
+                                    return Mono.empty();
+                                })
+                );
     }
 
     private Mono<Void> replaceUserNailPreferences(int userId, List<UserPreferences> preferences) {

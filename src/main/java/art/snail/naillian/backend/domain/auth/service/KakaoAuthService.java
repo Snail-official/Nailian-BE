@@ -3,6 +3,7 @@ package art.snail.naillian.backend.domain.auth.service;
 import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.jwt.JwtProvider;
 import art.snail.naillian.backend.domain.user.entity.SocialLogin;
+import art.snail.naillian.backend.domain.user.entity.SocialPlatform;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.entity.UserType;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
@@ -157,7 +158,7 @@ public class KakaoAuthService {
                 .flatMap(savedUser -> {
                     SocialLogin sl = SocialLogin.builder()
                             .userId(savedUser.getId())
-                            .platform("KAKAO")
+                            .platform(SocialPlatform.KAKAO)
                             .platformUserId(platformUserId)
                             .build();
                     return socialLoginRepository.save(sl)

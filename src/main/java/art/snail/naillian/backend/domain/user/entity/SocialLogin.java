@@ -16,6 +16,6 @@ public class SocialLogin {
     @Id
     private Integer id;
     private Integer userId;
-    private String platform; // KAKAO
+    private SocialPlatform platform;
     private String platformUserId;
 }

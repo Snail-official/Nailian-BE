@@ -21,6 +21,7 @@ public class User {
     @Id
     private Integer id;
     private String nickname;
+    private String email;
     private UserType userType;
     private String registeredIp;
     private LocalDateTime createdAt;

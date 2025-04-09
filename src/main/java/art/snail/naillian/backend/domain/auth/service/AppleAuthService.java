@@ -15,29 +15,37 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import reactor.util.function.Tuple2;
 
 @Service
 @RequiredArgsConstructor
@@ -60,6 +68,20 @@ public class AppleAuthService {
 
     private final static String APPLE_AUTH_URL = "https://appleid.apple.com";
 
+    private static final long ACCESS_TOKEN_EXPIRATION_TIME = 1000 * 60 * 5;
+
+    private static final Logger log = LoggerFactory.getLogger(AppleAuthService.class);
+
+
+    // Client_Secret 리팩터링을 위한 상수형 변수들
+    private static final long CLIENT_SECRET_EXPIRATION_MILLIS = 1000L * 60 * 60 * 24 * 180; // 180일
+    private static final long CLIENT_SECRET_REFRESH_THRESHOLD_MILLIS = 1000L * 60 * 60 * 24; // 만료 1일 전이면 갱신
+
+    private volatile String cachedClientSecret = null;
+    private volatile long cachedClientSecretExp = 0;
+
+    private final Object lock = new Object();
+
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final TokenService tokenService;
@@ -79,20 +101,6 @@ public class AppleAuthService {
     }
 
     /**
-     * 애플 로그인 페이지 이동을 위한 URL
-     */
-    public String getAppleLogin() {
-        return UriComponentsBuilder.fromHttpUrl(APPLE_AUTH_URL + "/auth/authorize")
-                .queryParam("client_id", APPLE_CLIENT_ID)
-                .queryParam("redirect_uri", APPLE_REDIRECT_URL)
-                .queryParam("response_type", "code id_token")
-                .queryParam("scope", "name email")
-                .queryParam("response_mode", "form_post")
-                .build()
-                .toUriString();
-    }
-
-    /**
      * 애플 로그인 처리:
      * - 클라이언트로부터 전달받은 identityToken, authorizationCode, user 정보를 사용
      * - JWT를 통해 Access/Refresh Token 발급 ㅎ TokenService를 통해 Redis에 저장
@@ -105,17 +113,25 @@ public class AppleAuthService {
         return exchangeAuthorizationCodeWithApple(request.getAuthorizationCode())
                 .flatMap(tokenRes -> verifyIdentityToken(tokenRes.idToken)) // Apple에서 받은 id_token 검증
                 .flatMap(claims -> {
-                    // 'sub' 값을 Apple의 고유 식별자로 사용
-                    String sub = claims.getSubject();
+                    String sub = claims.getSubject(); // Apple 고유 식별자
                     return findOrCreateUser(request, sub);
                 })
-                .flatMap(user -> {
-                    String accessToken = jwtProvider.generateAccessToken(user.getId(), new Date());
-                    String refreshToken = jwtProvider.generateRefreshToken(user.getId(), new Date());
-                    tokenService.storeTokenPair(accessToken, refreshToken, user.getId());
-                    return Mono.just(new UserTokenPairDTO(accessToken, refreshToken));
-                });
+                .map(user -> {
+                    Date now = new Date();
+                    String accessToken = jwtProvider.generateAccessToken(user.getId(), now);
+                    String refreshToken = jwtProvider.generateRefreshToken(user.getId(), now);
+                    return Tuples.of(new UserTokenPairDTO(accessToken, refreshToken), user.getId());
+                })
+                .doOnNext(tuple -> {
+                    UserTokenPairDTO dto = tuple.getT1();
+                    Integer userId = tuple.getT2();
+                    tokenService.storeTokenPair(dto.getAccessToken(), dto.getRefreshToken(), userId);
+                })
+                .map(Tuple2::getT1);
     }
+
+
+
 
 
     private Mono<AppleTokenResponse> exchangeAuthorizationCodeWithApple(String authorizationCode) {
@@ -134,11 +150,13 @@ public class AppleAuthService {
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError(), response ->
                             response.bodyToMono(String.class)
-                                    .flatMap(body -> Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "Apple 인증 오류: " + body)))
+                                    .doOnNext(body -> log.warn("Apple 인증 4xx 오류 응답: {}", body))
+                                    .then(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "Apple 인증 요청에 문제가 발생했습니다.")))
                     )
                     .onStatus(status -> status.is5xxServerError(), response ->
                             response.bodyToMono(String.class)
-                                    .flatMap(body -> Mono.error(new ReportableError(HttpStatus.INTERNAL_SERVER_ERROR, "Apple 서버 에러: " + body)))
+                                    .doOnNext(body -> log.error("Apple 인증 5xx 서버 오류 응답: {}", body))
+                                    .then(Mono.error(new ReportableError(HttpStatus.INTERNAL_SERVER_ERROR, "Apple 서버 오류가 발생했습니다. 나중에 다시 시도해주세요.")))
                     )
                     .bodyToMono(AppleTokenResponse.class);
         });
@@ -149,18 +167,36 @@ public class AppleAuthService {
 
     private Mono<String> generateClientSecret() {
         return Mono.fromCallable(() -> {
-            Date now = new Date();
-            Date exp = new Date(now.getTime() + 1000 * 60 * 5); // 5분 유효
+            long now = System.currentTimeMillis();
 
-            return Jwts.builder()
-                    .setHeaderParam("kid", APPLE_LOGIN_KEY)
-                    .setIssuer(APPLE_TEAM_ID)
-                    .setIssuedAt(now)
-                    .setExpiration(exp)
-                    .setAudience("https://appleid.apple.com")
-                    .setSubject(APPLE_CLIENT_ID)
-                    .signWith(cachedPrivateKey, io.jsonwebtoken.SignatureAlgorithm.ES256)
-                    .compact();
+            if (cachedClientSecret != null && (cachedClientSecretExp - now) > CLIENT_SECRET_REFRESH_THRESHOLD_MILLIS) {
+                return cachedClientSecret;
+            }
+
+            synchronized (lock) {
+                now = System.currentTimeMillis();
+                if (cachedClientSecret != null && (cachedClientSecretExp - now) > CLIENT_SECRET_REFRESH_THRESHOLD_MILLIS) {
+                    return cachedClientSecret;
+                }
+
+                Date issuedAt = new Date(now);
+                Date expiration = new Date(now + CLIENT_SECRET_EXPIRATION_MILLIS);
+
+                String newClientSecret = Jwts.builder()
+                        .setHeaderParam("kid", APPLE_LOGIN_KEY)
+                        .setIssuer(APPLE_TEAM_ID)
+                        .setIssuedAt(issuedAt)
+                        .setExpiration(expiration)
+                        .setAudience(APPLE_AUTH_URL)
+                        .setSubject(APPLE_CLIENT_ID)
+                        .signWith(cachedPrivateKey, io.jsonwebtoken.SignatureAlgorithm.ES256)
+                        .compact();
+
+                cachedClientSecret = newClientSecret;
+                cachedClientSecretExp = expiration.getTime();
+
+                return newClientSecret;
+            }
         });
     }
 
@@ -169,7 +205,7 @@ public class AppleAuthService {
      * Private Key 로딩 메서드인데 한번 호출 후 캐싱
      * PostConstruct에서 동기 호출
      */
-    private PrivateKey loadPrivateKey(String keyPath) throws Exception {
+    private PrivateKey loadPrivateKey(String keyPath) throws IOException, NoSuchAlgorithmException,  InvalidKeySpecException{
         String key = Files.readString(Path.of(keyPath))
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
@@ -198,7 +234,7 @@ public class AppleAuthService {
                                             .build()
                                             .parseClaimsJws(identityToken)
                                             .getBody();
-                                    if (!"https://appleid.apple.com".equals(claims.getIssuer())) {
+                                    if (!APPLE_AUTH_URL.equals(claims.getIssuer())) {
                                         throw new ReportableError(HttpStatus.BAD_REQUEST, "유효하지 않은 issuer입니다.");
                                     }
                                     if (!APPLE_CLIENT_ID.equals(claims.getAudience())) {
@@ -258,18 +294,17 @@ public class AppleAuthService {
         String email = request.getUser().getEmail();
 
         return socialLoginRepository.findByPlatformUserId(sub)
-                .flatMap(socialLogin ->
-                        userRepository.findById(socialLogin.getUserId())
-                                .flatMap(existingUser -> {
-                                    if (existingUser.getDeletedAt() != null) {
-                                        existingUser.setDeletedAt(null);
-                                        return userRepository.save(existingUser);
-                                    }
-                                    return Mono.just(existingUser);
-                                })
-                )
+                .flatMap(socialLogin -> userRepository.findById(socialLogin.getUserId()))
+                .flatMap(user -> {
+                    if (user.getDeletedAt() != null) {
+                        user.setDeletedAt(null);
+                        return userRepository.save(user);
+                    }
+                    return Mono.just(user);
+                })
                 .switchIfEmpty(createNewUser(sub, nickname, email));
     }
+
 
 
 
@@ -278,16 +313,15 @@ public class AppleAuthService {
      * 개선: 사용자 생성 및 소셜 로그인 등록을 하나의 Mono 체인으로 통합
      */
     private Mono<User> createNewUser(String sub, String nickname, String email) {
-        User newUser = User.builder()
-                .nickname(nickname)
-                .userType(UserType.CUSTOMER)
-                .registeredIp("UNKNOWN")
-                .createdAt(LocalDateTime.now())
-                .onboardingStepsBitmask(0)
-                .email(email)
-                .build();
-
-        return userRepository.save(newUser)
+        return Mono.fromCallable(() -> User.builder()
+                        .nickname(nickname)
+                        .userType(UserType.CUSTOMER)
+                        .registeredIp("UNKNOWN")
+                        .createdAt(LocalDateTime.now())
+                        .onboardingStepsBitmask(0)
+                        .email(email)
+                        .build())
+                .flatMap(userRepository::save)
                 .flatMap(savedUser -> {
                     SocialLogin sl = SocialLogin.builder()
                             .userId(savedUser.getId())
@@ -300,10 +334,13 @@ public class AppleAuthService {
     }
 
 
-    public static class ApplePublicKeys {
+
+
+    static class ApplePublicKeys {
         @JsonProperty("keys")
         private List<ApplePublicKey> keys;
 
+        @Nullable
         public ApplePublicKey getKeyById(String kid) {
             if (keys == null) return null;
             return keys.stream()
@@ -314,6 +351,7 @@ public class AppleAuthService {
     }
 
 
+    @Data
     public static class ApplePublicKey {
         private String kid;
         private String kty;
@@ -370,7 +408,7 @@ public class AppleAuthService {
             this.e = e;
         }
 
-        public PublicKey toPublicKey() throws Exception {
+        public PublicKey toPublicKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
             byte[] modulusBytes = Base64.getUrlDecoder().decode(n);
             byte[] exponentBytes = Base64.getUrlDecoder().decode(e);
             BigInteger modulus = new BigInteger(1, modulusBytes);
@@ -381,7 +419,7 @@ public class AppleAuthService {
         }
     }
 
-    public static class AppleTokenResponse{
+    static class AppleTokenResponse{
         @JsonProperty("access_token")
         public String accessToken;
 

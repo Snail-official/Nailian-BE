@@ -291,5 +291,14 @@ public class NailService {
                 .collectList();
     }
 
-
+    public Mono<PageDTO<NailIdAndUrlDTO>> getRandom(Pageable page, int userId) {
+        return tipRepository.count()
+                .filter(count -> count > 0)
+                .zipWith(tipRepository.findAllShuffled(page, userId)
+                        .map(NailIdAndUrlDTO::from)
+                        .collectList())
+                .map(tuple -> new PageDTO<>(tuple.getT2(), page, tuple.getT1()))
+                .switchIfEmpty(Mono.just(new PageDTO<>(Collections.emptyList(), page, 0)))
+                ;
+    }
 }

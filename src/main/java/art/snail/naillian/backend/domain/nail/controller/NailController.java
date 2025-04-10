@@ -30,13 +30,12 @@ public class NailController {
             UserAuthByTokenPayload payload,
             Pageable page
     ) {
-        if(random){
-            return nailService.getRandom(page, payload.getUserId())
-                    .map(CommonResponse::success);
-        } else {
-            return nailService.getNailTipsByAttributes(shape, color, category, page)
-                    .map(CommonResponse::success);
-        }
+        return Mono.just(random)
+                .flatMap(isRandom -> isRandom
+                        ? nailService.getRandom(page, payload.getUserId())
+                        : nailService.getNailTipsByAttributes(shape, color, category, page)
+                )
+                .map(CommonResponse::success);
     }
 
     @GetMapping("/preferences")

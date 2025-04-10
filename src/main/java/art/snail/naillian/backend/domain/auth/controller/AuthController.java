@@ -32,7 +32,7 @@ public class AuthController {
     }
 
     /** Token 재발급 */
-    @PostMapping("/re-issue")
+    @PostMapping("/reissue")
     public Mono<ResponseEntity<Map<String, Object>>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
         return authenticationService.reIssueAccessToken(refreshToken)

@@ -26,10 +26,17 @@ public class NailController {
             @RequestParam(value = "shape", required = false) String shape,
             @RequestParam(value = "color", required = false) String color,
             @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "random", defaultValue = "true") boolean random,
+            UserAuthByTokenPayload payload,
             Pageable page
     ) {
-        return nailService.getNailTipsByAttributes(shape, color, category, page)
-                .map(CommonResponse::success);
+        if(random){
+            return nailService.getRandom(page, payload.getUserId())
+                    .map(CommonResponse::success);
+        } else {
+            return nailService.getNailTipsByAttributes(shape, color, category, page)
+                    .map(CommonResponse::success);
+        }
     }
 
     @GetMapping("/preferences")

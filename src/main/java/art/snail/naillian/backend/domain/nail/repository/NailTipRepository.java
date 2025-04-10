@@ -50,4 +50,13 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
             String color,
             String category
     );
+
+    @Query("""
+            SELECT *
+            FROM nail_tip
+            ORDER BY RAND(:seed)
+            LIMIT :#{#pageable.getPageSize()}
+            OFFSET :#{#pageable.getOffset()}
+            """)
+    Flux<NailTip> findAllShuffled(Pageable pageable, int seed);
 }

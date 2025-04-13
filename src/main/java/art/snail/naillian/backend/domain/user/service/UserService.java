@@ -87,7 +87,7 @@ public class UserService {
      */
     public Mono<Void> deleteUser(int userId) {
         return userRepository.findById(userId)
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")))
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.GONE, "회원 정보가 존재하지 않습니다. 다시 로그인해주세요.")))
                 .flatMap(user -> {
                     if (user.getDeletedAt() != null) {
                         return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."));

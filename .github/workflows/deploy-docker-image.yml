@@ -48,6 +48,6 @@ jobs:
       - build-and-push-docker
     steps:
       - name: Dispatch event
-        run: gh api /repos/snail-official/nailian-iac/dispatches -f event_type='restart-backend-dev'
+        run: gh api /repos/snail-official/nailian-iac/dispatches -f event_type='cd-backend' -f 'client_payload[commit_hash]=${{ needs.build-and-push-docker.outputs.SHORT_SHA }}'
         env:
           GH_TOKEN: ${{ secrets.GH_TRIGGER_TOKEN }}

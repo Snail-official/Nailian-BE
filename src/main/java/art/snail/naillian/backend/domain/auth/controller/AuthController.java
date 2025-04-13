@@ -1,10 +1,13 @@
 package art.snail.naillian.backend.domain.auth.controller;
 
 import art.snail.naillian.backend.common.CommonResponse;
+import art.snail.naillian.backend.domain.auth.dto.AppleAuthRequest;
 import art.snail.naillian.backend.domain.auth.dto.KakaoAuthRequest;
 import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
+import art.snail.naillian.backend.domain.auth.service.AppleAuthService;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.auth.service.KakaoAuthService;
+import com.nimbusds.oauth2.sdk.Response;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,7 @@ public class AuthController {
 
     private final KakaoAuthService kakaoAuthService;
     private final AuthenticationService authenticationService;
+    private final AppleAuthService appleAuthService;
 
     @PostMapping("/kakao")
     public Mono<CommonResponse<UserTokenPairDTO>> kakaoLogin(@RequestBody KakaoAuthRequest request) {
@@ -43,6 +47,12 @@ public class AuthController {
     public Mono<ResponseEntity<Map<String, Object>>> logout(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.logout(accessToken)
                 .map(body -> ResponseEntity.ok(body));
+    }
+
+    @PostMapping("/apple")
+    public Mono<CommonResponse<UserTokenPairDTO>> appleLogin(@RequestBody AppleAuthRequest request){
+        return appleAuthService.handleAppleLogin(request)
+                .map(dto -> CommonResponse.success(dto, "애플 로그인 성공"));
     }
 
 

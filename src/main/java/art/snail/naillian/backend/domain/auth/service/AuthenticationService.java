@@ -35,17 +35,18 @@ public class AuthenticationService {
     /**
      * refreshToken을 사용해 새로운 accessToken 발급
      */
-    public Mono<String> reIssueAccessToken(String refreshToken) {
-        return jwtProvider.getUserIdFromToken(refreshToken)
-                .flatMap(userId -> tokenService.getRefreshTokenByUserId(userId)
-                        .flatMap(storedToken -> {
-                            if (!storedToken.equals(refreshToken)) {
-                                return Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다."));
-                            }
-                            return Mono.just(jwtProvider.generateAccessToken(userId, new Date()));
-                        })
-                )
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken입니다.")));
+    public Mono<String> reIssueAccessToken(@NonNull String refreshToken) {
+        return Mono.just(refreshToken)
+                .filter(token -> !token.isBlank())
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "리프레시 토큰이 필요합니다.")))
+                .flatMap(jwtProvider::getUserIdFromToken)
+                .zipWhen(tokenService::getRefreshTokenByUserId)
+                .handle((tuple, sink) -> {
+                    if (!refreshToken.equals(tuple.getT2()))
+                        sink.error(new ReportableError(HttpStatus.UNAUTHORIZED, "유효하지 않은 refreshToken 입니다."));
+                    else sink.next(jwtProvider.generateAccessToken(tuple.getT1(), new Date()));
+                })
+                ;
     }
 
     /**

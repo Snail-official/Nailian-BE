@@ -6,7 +6,6 @@ import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.auth.service.KakaoAuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -27,10 +26,10 @@ public class AuthController {
 
     /** Token 재발급 */
     @PostMapping("/reissue")
-    public Mono<ResponseEntity<Map<String, Object>>> reIssueToken(@RequestBody Map<String, String> requestBody) {
+    public Mono<CommonResponse<String>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
         return authenticationService.reIssueAccessToken(refreshToken)
-                .map(newAccessToken -> ResponseEntity.ok(Map.of("accessToken", newAccessToken)));
+                .map(token -> CommonResponse.success(token, "토큰 재발급 성공"));
     }
 
     @PostMapping("/logout")

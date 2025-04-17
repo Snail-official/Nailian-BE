@@ -3,6 +3,7 @@ package art.snail.naillian.backend.domain.auth.controller;
 import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.dto.AppleAuthRequest;
 import art.snail.naillian.backend.domain.auth.dto.KakaoAuthRequest;
+import art.snail.naillian.backend.domain.auth.dto.UserNewAccessTokenDTO;
 import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.service.AppleAuthService;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
@@ -29,10 +30,10 @@ public class AuthController {
 
     /** Token 재발급 */
     @PostMapping("/reissue")
-    public Mono<CommonResponse<String>> reIssueToken(@RequestBody Map<String, String> requestBody) {
+    public Mono<CommonResponse<UserNewAccessTokenDTO>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
         return authenticationService.reIssueAccessToken(refreshToken)
-                .map(token -> CommonResponse.success(token, "토큰 재발급 성공"));
+                .map(token -> CommonResponse.success(new UserNewAccessTokenDTO(token), "토큰 재발급 성공"));
     }
 
     @PostMapping("/logout")

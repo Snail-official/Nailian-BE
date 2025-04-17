@@ -4,10 +4,14 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
+import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
+import art.snail.naillian.backend.domain.user.dto.EventSubmissionDTO;
+import art.snail.naillian.backend.domain.user.entity.EventSubmission;
 import art.snail.naillian.backend.domain.user.entity.User;
+import art.snail.naillian.backend.domain.user.repository.EventSubmissionRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +24,17 @@ import reactor.util.function.Tuple2;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
-
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
+    private final EventSubmissionRepository eventRepository;
+
+    private static final Pattern EMAIL_OR_PHONE =
+            Pattern.compile("(^[^@]+@[^@\\.]+\\.[^@\\.\\n]+$)|(^0[15-9][0-9]{1,2}-[0-9]{3,4}-[0-9]{3,5}$)");
 
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
     private final NailService nailService;
@@ -144,6 +152,40 @@ public class UserService {
 
         return getUserById(userId)
                 .then(nailService.deleteNailSetEnsureUser(userId, nailSetId))
+                .then();
+    }
+
+    /**
+     * 아트 이벤트 응모
+     */
+    public Mono<Void> submitEvent(int userId, EventSubmissionDTO event) {
+        if (!EMAIL_OR_PHONE.matcher(event.getUserInfo()).matches()) {
+            return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST,
+                    "입력하신 이메일 혹은 전화번호가 올바르지 않습니다."));
+        }
+
+        return nailService.getNailSet(event.getNailSetId())
+                .filter(set -> Objects.equals(set.getUploadedBy(), userId))
+                .switchIfEmpty(Mono.error(new ReportableError(
+                        HttpStatus.NOT_FOUND, "네일 세트를 찾을 수 없습니다.")))
+
+                .then(eventRepository.existsByUserId(userId))
+                .filter(exists -> !exists)
+                .switchIfEmpty(Mono.error(new ReportableError(
+                        HttpStatus.BAD_REQUEST, "이미 응모하셨습니다.")))
+
+                .map(__ -> {
+                    boolean isEmail = event.getUserInfo().contains("@");
+                    return EventSubmission.builder()
+                            .userId(userId)
+                            .nailSetId(event.getNailSetId())
+                            .email(isEmail ? event.getUserInfo() : null)
+                            .phoneNumber(isEmail ? null : event.getUserInfo())
+                            .createdAt(LocalDateTime.now())
+                            .build();
+                })
+
+                .flatMap(eventRepository::save)
                 .then();
     }
 }

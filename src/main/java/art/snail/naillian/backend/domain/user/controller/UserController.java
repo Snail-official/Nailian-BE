@@ -5,10 +5,7 @@ import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.jwt.UserAuthByTokenPayload;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
-import art.snail.naillian.backend.domain.user.dto.CreateNailSetDTO;
-import art.snail.naillian.backend.domain.user.dto.UserChangeNicknameDTO;
-import art.snail.naillian.backend.domain.user.dto.UserResponseDTO;
-import art.snail.naillian.backend.domain.user.dto.UserScrapingNailSetIdDTO;
+import art.snail.naillian.backend.domain.user.dto.*;
 import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -112,5 +109,17 @@ public class UserController {
     ) {
         return userService.unScrapNailSetForUser(payload.getUserId(), setId)
                 .then(Mono.just(CommonResponse.success(null, "네일 세트가 보관함에서 삭제되었습니다.")));
+    }
+
+    /**
+     * 사용자가 이벤트 응모
+     */
+    @PostMapping("/me/event")
+    public Mono<CommonResponse<Void>> submitEvent(
+            UserAuthByTokenPayload payload,
+            @RequestBody EventSubmissionDTO body){
+
+        return userService.submitEvent(payload.getUserId(), body)
+                .thenReturn(CommonResponse.success(null, "응모가 완료되었습니다."));
     }
 }

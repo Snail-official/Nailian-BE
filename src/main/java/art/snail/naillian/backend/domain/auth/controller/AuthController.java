@@ -40,10 +40,8 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public Mono<ResponseEntity<Map<String, Object>>> logout(@RequestHeader("Authorization") String accessToken) {
+    public Mono<CommonResponse<Void>> logout(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.logout(accessToken)
-                .map(body -> ResponseEntity.ok(body));
+                .map(value -> CommonResponse.success(null, "로그아웃 성공"));
     }
-
-
 }

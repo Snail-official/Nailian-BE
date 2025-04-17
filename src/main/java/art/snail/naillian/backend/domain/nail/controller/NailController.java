@@ -26,7 +26,7 @@ public class NailController {
             @RequestParam(value = "shape", required = false) String shape,
             @RequestParam(value = "color", required = false) String color,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "random", defaultValue = "true") boolean random,
+            @RequestParam(value = "random", defaultValue = "false") boolean random,
             UserAuthByTokenPayload payload,
             Pageable page
     ) {

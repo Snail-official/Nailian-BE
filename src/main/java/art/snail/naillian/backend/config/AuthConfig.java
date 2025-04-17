@@ -29,6 +29,7 @@ public class AuthConfig {
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)  //
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())  // stateless authentication
                 .authorizeExchange(exchange -> exchange
+                        .pathMatchers(PUBLIC_ROUTES).permitAll()
                         .pathMatchers(HttpMethod.OPTIONS).permitAll()
                         .pathMatchers("/auth/**").permitAll()
                         .pathMatchers("/model/**").permitAll()

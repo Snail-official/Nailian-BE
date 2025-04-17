@@ -3,15 +3,12 @@ package art.snail.naillian.backend.domain.auth.controller;
 import art.snail.naillian.backend.common.CommonResponse;
 import art.snail.naillian.backend.domain.auth.dto.AppleAuthRequest;
 import art.snail.naillian.backend.domain.auth.dto.KakaoAuthRequest;
+import art.snail.naillian.backend.domain.auth.dto.UserNewAccessTokenDTO;
 import art.snail.naillian.backend.domain.auth.dto.UserTokenPairDTO;
 import art.snail.naillian.backend.domain.auth.service.AppleAuthService;
 import art.snail.naillian.backend.domain.auth.service.AuthenticationService;
 import art.snail.naillian.backend.domain.auth.service.KakaoAuthService;
-import com.nimbusds.oauth2.sdk.Response;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -21,10 +18,6 @@ import java.util.Map;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
-    private static final Logger log = LoggerFactory.getLogger(KakaoAuthService.class);
-
-
     private final KakaoAuthService kakaoAuthService;
     private final AuthenticationService authenticationService;
     private final AppleAuthService appleAuthService;
@@ -37,16 +30,16 @@ public class AuthController {
 
     /** Token 재발급 */
     @PostMapping("/reissue")
-    public Mono<ResponseEntity<Map<String, Object>>> reIssueToken(@RequestBody Map<String, String> requestBody) {
+    public Mono<CommonResponse<UserNewAccessTokenDTO>> reIssueToken(@RequestBody Map<String, String> requestBody) {
         String refreshToken = requestBody.get("refreshToken");
         return authenticationService.reIssueAccessToken(refreshToken)
-                .map(newAccessToken -> ResponseEntity.ok(Map.of("accessToken", newAccessToken)));
+                .map(token -> CommonResponse.success(new UserNewAccessTokenDTO(token), "토큰 재발급 성공"));
     }
 
     @PostMapping("/logout")
-    public Mono<ResponseEntity<Map<String, Object>>> logout(@RequestHeader("Authorization") String accessToken) {
+    public Mono<CommonResponse<Void>> logout(@RequestHeader("Authorization") String accessToken) {
         return authenticationService.logout(accessToken)
-                .map(body -> ResponseEntity.ok(body));
+                .map(value -> CommonResponse.success(null, "로그아웃 성공"));
     }
 
     @PostMapping("/apple")
@@ -54,6 +47,4 @@ public class AuthController {
         return appleAuthService.handleAppleLogin(request)
                 .map(dto -> CommonResponse.success(dto, "애플 로그인 성공"));
     }
-
-
 }

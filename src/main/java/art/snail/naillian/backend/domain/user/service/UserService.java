@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -175,7 +176,7 @@ public class UserService {
                             .nailSetId(event.getNailSetId())
                             .email(isEmail ? event.getUserInfo() : null)
                             .phoneNumber(isEmail ? null : event.getUserInfo())
-                            .createdAt(LocalDateTime.now())
+                            .createdAt(LocalDateTime.now(Clock.systemUTC()))
                             .build();
                 })
                 .flatMap(eventRepository::save)

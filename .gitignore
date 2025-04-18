@@ -40,3 +40,9 @@ out/
 src/**/resources/application*.properties
 src/**/resources/application*.yml
 !src/**/resources/application-example.properties
+
+### macOS ###
+.DS_Store
+
+### Secrets but injected by helm later ###
+*.p8

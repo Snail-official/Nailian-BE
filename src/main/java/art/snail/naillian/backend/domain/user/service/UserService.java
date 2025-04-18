@@ -182,4 +182,8 @@ public class UserService {
                 .flatMap(eventRepository::save)
                 .then();
     }
+
+    public Mono<Boolean> eventStatus(int userId){
+        return eventRepository.existsByUserId(userId);
+    }
 }

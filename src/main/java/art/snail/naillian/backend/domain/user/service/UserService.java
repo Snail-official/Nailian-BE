@@ -4,7 +4,6 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
-import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
@@ -27,17 +26,15 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
     private final EventSubmissionRepository eventRepository;
-
-    private static final Pattern EMAIL_OR_PHONE =
-            Pattern.compile("(^[^@]+@[^@\\.]+\\.[^@\\.\\n]+$)|(^0[15-9][0-9]{1,2}-[0-9]{3,4}-[0-9]{3,5}$)");
-
-    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
+    private static final Pattern EMAIL_OR_PHONE = Pattern.compile("(^[^@]+@[^@.]+\\.[^@.\\n]+$)|(^0[15-9][0-9]{1,2}-[0-9]{3,4}-[0-9]{3,5}$)");
     private final NailService nailService;
+    private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
     /**
      * 기존 회원 정보 불러오기

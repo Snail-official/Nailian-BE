@@ -117,8 +117,8 @@ public class UserController {
     @PostMapping("/me/event")
     public Mono<CommonResponse<Void>> submitEvent(
             UserAuthByTokenPayload payload,
-            @RequestBody EventSubmissionDTO body){
-
+            @RequestBody EventSubmissionDTO body
+    ) {
         return userService.submitEvent(payload.getUserId(), body)
                 .thenReturn(CommonResponse.success(null, "응모가 완료되었습니다."));
     }

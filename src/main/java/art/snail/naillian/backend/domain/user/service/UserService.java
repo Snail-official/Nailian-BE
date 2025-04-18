@@ -163,14 +163,11 @@ public class UserService {
 
         return nailService.getNailSet(event.getNailSetId())
                 .filter(set -> Objects.equals(set.getUploadedBy(), userId))
-                .switchIfEmpty(Mono.error(new ReportableError(
-                        HttpStatus.NOT_FOUND, "네일 세트를 찾을 수 없습니다.")))
-
-                .then(eventRepository.existsByUserId(userId))
-                .filter(exists -> !exists)
-                .switchIfEmpty(Mono.error(new ReportableError(
-                        HttpStatus.BAD_REQUEST, "이미 응모하셨습니다.")))
-
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "네일 세트를 찾을 수 없습니다.")))
+                .zipWith(eventRepository.existsByUserId(userId)
+                        .filter(exists -> !exists)
+                        .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 응모하셨습니다.")))
+                )
                 .map(__ -> {
                     boolean isEmail = event.getUserInfo().contains("@");
                     return EventSubmission.builder()
@@ -181,7 +178,6 @@ public class UserService {
                             .createdAt(LocalDateTime.now())
                             .build();
                 })
-
                 .flatMap(eventRepository::save)
                 .then();
     }

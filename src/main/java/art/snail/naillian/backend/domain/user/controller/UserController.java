@@ -122,4 +122,15 @@ public class UserController {
         return userService.submitEvent(payload.getUserId(), body)
                 .thenReturn(CommonResponse.success(null, "응모가 완료되었습니다."));
     }
+
+    /**
+     * 이벤트 응모 여부 조회
+     */
+    @GetMapping("/me/event")
+    public Mono<CommonResponse<Boolean>> checkEventStatus(
+            UserAuthByTokenPayload payload
+    ) {
+        return userService.hasEnrolledEvent(payload.getUserId())
+                .map(flag -> CommonResponse.success(flag, "이벤트 응모 여부 조회 성공"));
+    }
 }

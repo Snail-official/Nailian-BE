@@ -126,11 +126,11 @@ public class UserController {
     /**
      * 이벤트 응모 여부 조회
      */
-    @GetMapping("/me/event-status")
+    @GetMapping("/me/event")
     public Mono<CommonResponse<Boolean>> checkEventStatus(
             UserAuthByTokenPayload payload
     ) {
-        return userService.eventStatus(payload.getUserId())
+        return userService.hasEnrolledEvent(payload.getUserId())
                 .map(flag -> CommonResponse.success(flag, "이벤트 응모 여부 조회 성공"));
     }
 }

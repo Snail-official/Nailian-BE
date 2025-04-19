@@ -183,7 +183,7 @@ public class UserService {
                 .then();
     }
 
-    public Mono<Boolean> eventStatus(int userId){
+    public Mono<Boolean> hasEnrolledEvent(int userId) {
         return eventRepository.existsByUserId(userId);
     }
 }

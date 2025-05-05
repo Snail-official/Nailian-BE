@@ -25,7 +25,8 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
     @Query("""
                 SELECT *
                 FROM nail_tip
-                WHERE ('' = :shape or shape = :shape)
+                WHERE deleted_at IS NULL
+                  AND ('' = :shape or shape = :shape)
                   AND ('' = :color or color = :color)
                   AND ('' = :category or category = :category)
                 LIMIT :limit

@@ -12,13 +12,14 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
     Flux<NailTip> findAllBy(Pageable page);
 
     @Query("""
-        SELECT * 
-        FROM nail_tip
-        WHERE shape = :shape
-          AND color = :color
-          AND category = :category
-        LIMIT 1
-        """)
+        SELECT *
+          FROM nail_tip
+         WHERE deleted_at IS NULL
+           AND shape    = :shape
+           AND color    = :color
+           AND category = :category
+         LIMIT 1
+    """)
     Mono<NailTip> findByShapeAndColorAndCategory(String shape, String color, String category);
 
     @Query("""
@@ -39,12 +40,13 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
     );
 
     @Query("""
-                SELECT count(*)
-                FROM nail_tip
-                WHERE ('' = :shape or shape = :shape)
-                  AND ('' = :color or color = :color)
-                  AND ('' = :category or category = :category)
-            """)
+        SELECT COUNT(*)
+          FROM nail_tip
+         WHERE deleted_at IS NULL
+           AND ('' = :shape    OR shape    = :shape)
+           AND ('' = :color    OR color    = :color)
+           AND ('' = :category OR category = :category)
+    """)
     Mono<Long> countFilteredByShapeAndColorAndCategory(
             String shape,
             String color,
@@ -54,6 +56,7 @@ public interface NailTipRepository extends ReactiveCrudRepository<NailTip, Integ
     @Query("""
             SELECT *
             FROM nail_tip
+            WHERE deleted_at IS NULL
             ORDER BY RAND(:seed)
             LIMIT :#{#pageable.getPageSize()}
             OFFSET :#{#pageable.getOffset()}

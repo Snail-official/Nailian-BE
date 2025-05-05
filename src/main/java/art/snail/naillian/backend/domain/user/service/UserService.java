@@ -13,6 +13,7 @@ import art.snail.naillian.backend.domain.user.dto.EventSubmissionDTO;
 import art.snail.naillian.backend.domain.user.entity.EventSubmission;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.EventSubmissionRepository;
+import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import reactor.util.function.Tuple2;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,6 +45,7 @@ public class UserService {
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
     private static final int EVENT_FOLDER_ID = 4;
+    private final SocialLoginRepository socialLoginRepository;
 
     /**
      * 기존 회원 정보 불러오기
@@ -105,8 +108,19 @@ public class UserService {
                     if (user.getDeletedAt() != null) {
                         return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."));
                     }
-                    user.setDeletedAt(LocalDateTime.now());
-                    return userRepository.save(user);
+                    LocalDateTime now = LocalDateTime.now();
+                    user.setDeletedAt(now);
+                    return userRepository.save(user)
+                            .flatMap(savedUser ->
+                                    socialLoginRepository.findAllByUserId(userId)
+                                            .flatMap(sl -> {
+                                                sl.setDeletedAt(now);
+                                                long epoch = now.atZone(ZoneId.systemDefault()).toEpochSecond();
+                                                sl.setPlatformUserId(sl.getPlatformUserId() + "_deleted_at_" + epoch);
+                                                return socialLoginRepository.save(sl);
+                                            })
+                                            .then()
+                            );
                 })
                 .then();
     }

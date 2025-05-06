@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,4 +20,5 @@ public class SocialLogin {
     private Integer userId;
     private SocialPlatform platform;
     private String platformUserId;
+    private LocalDateTime deletedAt;
 }

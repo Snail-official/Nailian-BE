@@ -11,11 +11,13 @@ import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
 import art.snail.naillian.backend.domain.user.dto.EventSubmissionDTO;
 import art.snail.naillian.backend.domain.user.entity.EventSubmission;
+import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
 import art.snail.naillian.backend.domain.user.repository.EventSubmissionRepository;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,7 +30,7 @@ import reactor.util.function.Tuple2;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,25 +106,42 @@ public class UserService {
     public Mono<Void> deleteUser(int userId) {
         return userRepository.findById(userId)
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.GONE, "회원 정보가 존재하지 않습니다. 다시 로그인해주세요.")))
+                .filter(user -> user.getDeletedAt() == null)
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다.")))
                 .flatMap(user -> {
-                    if (user.getDeletedAt() != null) {
-                        return Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "이미 탈퇴한 사용자입니다."));
-                    }
                     LocalDateTime now = LocalDateTime.now();
-                    user.setDeletedAt(now);
-                    return userRepository.save(user)
-                            .flatMap(savedUser ->
-                                    socialLoginRepository.findAllByUserId(userId)
-                                            .flatMap(sl -> {
-                                                sl.setDeletedAt(now);
-                                                long epoch = now.atZone(ZoneId.systemDefault()).toEpochSecond();
-                                                sl.setPlatformUserId(sl.getPlatformUserId() + "_deleted_at_" + epoch);
-                                                return socialLoginRepository.save(sl);
-                                            })
-                                            .then()
-                            );
-                })
-                .then();
+                    return softDeleteUser(user, now)
+                            .then(softDeleteSocialLoginEntry(userId, now).then());
+                });
+    }
+
+    /**
+     * 사용자를 삭제된 것으로 표기함
+     * @param userEntity 삭제하고자 하는 사용자 엔티티
+     * @param now 삭제되었다고 표기하려는 시간
+     * @return 저장된 엔티티
+     */
+    private Mono<User> softDeleteUser(User userEntity, @NonNull LocalDateTime now) {
+        return Mono.defer(() -> {
+            userEntity.setDeletedAt(now);
+            return userRepository.save(userEntity);
+        });
+    }
+
+    /**
+     * 사용자의 모든 소셜 로그인 정보를 삭제된 것으로 표기함
+     * @param userId 삭제하고자 하는 사용자의 id
+     * @param now 삭제되었다고 표기하려는 시간
+     * @return 저장된 소셜 로그인 정보
+     */
+    private Flux<SocialLogin> softDeleteSocialLoginEntry(int userId, LocalDateTime now) {
+        return socialLoginRepository.findAllByUserId(userId)
+                .flatMap(socialLogin -> {
+                    long epoch = now.toEpochSecond(ZoneOffset.UTC);
+                    socialLogin.setDeletedAt(now);
+                    socialLogin.setPlatformUserId(socialLogin.getPlatformUserId() + "_deleted_at_" + epoch);
+                    return socialLoginRepository.save(socialLogin);
+                });
     }
 
     /**

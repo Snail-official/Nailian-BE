@@ -133,4 +133,19 @@ public class UserController {
         return userService.hasEnrolledEvent(payload.getUserId())
                 .map(flag -> CommonResponse.success(flag, "이벤트 응모 여부 조회 성공"));
     }
+
+    @PostMapping("/me/personal-nail")
+    public Mono<CommonResponse<PersonalNailStatusDto>> submitPersonalNailSelection(
+            @RequestBody CreatePersonalNailStatusDto dto
+    ) {
+        throw new RuntimeException("not implemented");
+    }
+
+    @GetMapping("/me/personal-nail")
+    public Mono<CommonResponse<PersonalNailStatusDto>> checkPersonalNailStatus(
+            UserAuthByTokenPayload payload
+    ) {
+        return this.userService.getUserNailStatus(payload.getUserId())
+                .map(CommonResponse::success);
+    }
 }

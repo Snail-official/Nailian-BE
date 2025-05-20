@@ -65,4 +65,28 @@ public class S3Service {
         }
         return map;
     }
+
+    public Mono<Map<String, Integer>> getPersonalNailMapping() {
+        return webClient.get()
+                .uri(modelConfig.getPersonalNailMappingUrl())
+                .header("Accept", "application/json")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .cache(Duration.ofHours(1))
+                .map(this::parseToPersonalNailMapping)
+                .onErrorResume(e -> {
+                    log.warn("Failed to retrieve data", e);
+                    return Mono.empty();
+                })
+                ;
+    }
+
+    private Map<String, Integer> parseToPersonalNailMapping(JsonNode node) {
+        Map<String, Integer> map = new HashMap<>();
+        for (Iterator<String> it = node.fieldNames(); it.hasNext(); ) {
+            String fieldName = it.next();
+            map.put(fieldName, node.get(fieldName).asInt());
+        }
+        return map;
+    }
 }

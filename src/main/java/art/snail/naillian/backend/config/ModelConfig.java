@@ -12,4 +12,5 @@ import org.springframework.context.annotation.Configuration;
 public class ModelConfig {
     private String s3ModelUrl;
     private String personalNailVariantsUrl;
+    private String personalNailMappingUrl;
 }

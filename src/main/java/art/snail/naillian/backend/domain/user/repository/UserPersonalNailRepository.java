@@ -6,4 +6,6 @@ import reactor.core.publisher.Mono;
 
 public interface UserPersonalNailRepository extends ReactiveCrudRepository<UserPersonalNail, Integer> {
     Mono<UserPersonalNail> findByUserId(Integer userId);
+
+    Mono<Void> deleteAllByUserId(Integer userId);
 }

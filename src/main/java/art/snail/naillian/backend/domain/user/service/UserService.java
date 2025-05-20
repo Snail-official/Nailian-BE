@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -270,5 +271,31 @@ public class UserService {
                     return variants.get(tuple.getT2());
                 })
                 .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "존재하지 않는 진단 정보를 갖고 있습니다.")));
+    }
+
+    public Mono<PersonalNailStatusDto> submitUserPersonalNailStatus(Integer userId, List<Integer> selections) {
+        return getUserById(userId)
+                .then(this.personalNailRepository.deleteAllByUserId(userId))
+                .then(this.s3Service.getPersonalNailMapping())
+                .zipWith(
+                        Flux.fromIterable(selections)
+                                .map(Object::toString)
+                                .collect(Collectors.joining(""))
+                )
+                .mapNotNull(tuple -> tuple.getT1().get(tuple.getT2()))
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "올바르지 않은 설문 결과입니다.")))
+                .flatMap(variantId -> this.saveUserPersonalNailAndReturnVariantId(userId, variantId)
+                        .then(this.s3Service.getPersonalNailVariants())
+                        .map(map -> map.get(variantId.toString()))
+                );
+    }
+
+    private Mono<Integer> saveUserPersonalNailAndReturnVariantId(Integer userId, Integer variantId) {
+        return Mono.fromCallable(() -> UserPersonalNail.builder()
+                        .userId(userId)
+                        .variantId(variantId)
+                        .build()
+                ).flatMap(this.personalNailRepository::save)
+                .then(Mono.just(variantId));
     }
 }

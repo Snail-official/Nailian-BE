@@ -136,9 +136,12 @@ public class UserController {
 
     @PostMapping("/me/personal-nail")
     public Mono<CommonResponse<PersonalNailStatusDto>> submitPersonalNailSelection(
+            UserAuthByTokenPayload payload,
             @RequestBody CreatePersonalNailStatusDto dto
     ) {
-        throw new RuntimeException("not implemented");
+        return this.userService.submitUserPersonalNailStatus(payload.getUserId(), dto.getSteps())
+                .map(data -> CommonResponse.success(data, "진단이 완료되었습니다."))
+                ;
     }
 
     @GetMapping("/me/personal-nail")

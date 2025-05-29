@@ -42,11 +42,14 @@ public class S3Service {
                 .header("Accept", "application/json")
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .cache(Duration.ofHours(1))
                 .map(this::parseToNailVariants)
+                .cache(token -> Duration.ofMinutes(30), e -> Duration.ZERO, () -> Duration.ZERO)
                 .onErrorResume(e -> {
+                    if (e instanceof ReportableError)
+                        return Mono.error(e);
+
                     log.warn("Failed to retrieve data", e);
-                    return Mono.empty();
+                    return Mono.error(new ReportableError(HttpStatus.INTERNAL_SERVER_ERROR, "진단 결과를 가져오는 도중 오류가 발생했습니다."));
                 })
                 ;
     }

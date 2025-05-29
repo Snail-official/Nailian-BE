@@ -72,8 +72,8 @@ public class S3Service {
                 .header("Accept", "application/json")
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .cache(Duration.ofHours(1))
                 .map(this::parseToPersonalNailMapping)
+                .cache(token -> Duration.ofMinutes(30), e -> Duration.ZERO, () -> Duration.ZERO)
                 .onErrorResume(e -> {
                     log.warn("Failed to retrieve data", e);
                     return Mono.empty();

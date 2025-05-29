@@ -257,7 +257,7 @@ public class UserService {
     private Mono<String> getPersonalNailVariantIdByUserId(Integer userId) {
         return getUserById(userId)
                 .flatMap(user -> personalNailRepository.findByUserId(user.getId()))
-                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "진단 정보가 없습니다.")))
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.OK, "진단 정보가 없습니다.", null)))
                 .map(UserPersonalNail::getVariantId)
                 .map(Object::toString);
     }

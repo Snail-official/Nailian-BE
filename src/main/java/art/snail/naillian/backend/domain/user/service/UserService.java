@@ -1,6 +1,7 @@
 package art.snail.naillian.backend.domain.user.service;
 
 import art.snail.naillian.backend.common.PageDTO;
+import art.snail.naillian.backend.common.S3Service;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailFolderSet;
@@ -10,11 +11,14 @@ import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
 import art.snail.naillian.backend.domain.user.dto.EventSubmissionDTO;
+import art.snail.naillian.backend.domain.user.dto.PersonalNailStatusDto;
 import art.snail.naillian.backend.domain.user.entity.EventSubmission;
 import art.snail.naillian.backend.domain.user.entity.SocialLogin;
 import art.snail.naillian.backend.domain.user.entity.User;
+import art.snail.naillian.backend.domain.user.entity.UserPersonalNail;
 import art.snail.naillian.backend.domain.user.repository.EventSubmissionRepository;
 import art.snail.naillian.backend.domain.user.repository.SocialLoginRepository;
+import art.snail.naillian.backend.domain.user.repository.UserPersonalNailRepository;
 import art.snail.naillian.backend.domain.user.repository.UserRepository;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.NonNull;
@@ -32,9 +36,11 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +48,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final EventSubmissionRepository eventRepository;
     private final NailFolderSetRepository folderSetRepository;
+    private final UserPersonalNailRepository personalNailRepository;
+
     private static final Pattern EMAIL_OR_PHONE = Pattern.compile("(^[^@]+@[^@.]+\\.[^@.\\n]+$)|(^0[15-9][0-9]{1,2}-[0-9]{3,4}-[0-9]{3,5}$)");
+    private final S3Service s3Service;
     private final NailService nailService;
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[ㄱ-ㅎ가-힣a-zA-Z0-9]{2,8}$");
 
@@ -243,5 +252,50 @@ public class UserService {
 
     public Mono<Boolean> hasEnrolledEvent(int userId) {
         return eventRepository.existsByUserId(userId);
+    }
+
+    private Mono<String> getPersonalNailVariantIdByUserId(Integer userId) {
+        return getUserById(userId)
+                .flatMap(user -> personalNailRepository.findByUserId(user.getId()))
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "진단 정보가 없습니다.")))
+                .map(UserPersonalNail::getVariantId)
+                .map(Object::toString);
+    }
+
+    public Mono<PersonalNailStatusDto> getUserNailStatus(Integer userId) {
+        return this.s3Service.getPersonalNailVariants()
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.INTERNAL_SERVER_ERROR, "진단 정보 셋을 받아오는데 실패했습니다.")))
+                .zipWith(this.getPersonalNailVariantIdByUserId(userId))
+                .mapNotNull(tuple -> {
+                    Map<String, PersonalNailStatusDto> variants = tuple.getT1();
+                    return variants.get(tuple.getT2());
+                })
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.NOT_FOUND, "존재하지 않는 진단 정보를 갖고 있습니다.")));
+    }
+
+    public Mono<PersonalNailStatusDto> submitUserPersonalNailStatus(Integer userId, List<Integer> selections) {
+        return getUserById(userId)
+                .then(this.personalNailRepository.deleteAllByUserId(userId))
+                .then(this.s3Service.getPersonalNailMapping())
+                .zipWith(
+                        Flux.fromIterable(selections)
+                                .map(Object::toString)
+                                .collect(Collectors.joining(""))
+                )
+                .mapNotNull(tuple -> tuple.getT1().get(tuple.getT2()))
+                .switchIfEmpty(Mono.error(new ReportableError(HttpStatus.BAD_REQUEST, "올바르지 않은 설문 결과입니다.")))
+                .flatMap(variantId -> this.saveUserPersonalNailAndReturnVariantId(userId, variantId)
+                        .then(this.s3Service.getPersonalNailVariants())
+                        .map(map -> map.get(variantId.toString()))
+                );
+    }
+
+    private Mono<Integer> saveUserPersonalNailAndReturnVariantId(Integer userId, Integer variantId) {
+        return Mono.fromCallable(() -> UserPersonalNail.builder()
+                        .userId(userId)
+                        .variantId(variantId)
+                        .build()
+                ).flatMap(this.personalNailRepository::save)
+                .then(Mono.just(variantId));
     }
 }

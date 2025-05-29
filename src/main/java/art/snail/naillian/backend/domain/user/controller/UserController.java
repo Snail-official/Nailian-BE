@@ -133,4 +133,22 @@ public class UserController {
         return userService.hasEnrolledEvent(payload.getUserId())
                 .map(flag -> CommonResponse.success(flag, "이벤트 응모 여부 조회 성공"));
     }
+
+    @PostMapping("/me/personal-nail")
+    public Mono<CommonResponse<PersonalNailStatusDto>> submitPersonalNailSelection(
+            UserAuthByTokenPayload payload,
+            @RequestBody CreatePersonalNailStatusDto dto
+    ) {
+        return this.userService.submitUserPersonalNailStatus(payload.getUserId(), dto.getSteps())
+                .map(data -> CommonResponse.success(data, "진단이 완료되었습니다."))
+                ;
+    }
+
+    @GetMapping("/me/personal-nail")
+    public Mono<CommonResponse<PersonalNailStatusDto>> checkPersonalNailStatus(
+            UserAuthByTokenPayload payload
+    ) {
+        return this.userService.getUserNailStatus(payload.getUserId())
+                .map(CommonResponse::success);
+    }
 }

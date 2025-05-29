@@ -76,7 +76,7 @@ public class S3Service {
                 .cache(token -> Duration.ofMinutes(30), e -> Duration.ZERO, () -> Duration.ZERO)
                 .onErrorResume(e -> {
                     log.warn("Failed to retrieve data", e);
-                    return Mono.empty();
+                    return Mono.error(new ReportableError(HttpStatus.INTERNAL_SERVER_ERROR, "서버가 잘못 저장된 퍼스널 네일 진단 매핑을 갖고 있습니다."));
                 })
                 ;
     }

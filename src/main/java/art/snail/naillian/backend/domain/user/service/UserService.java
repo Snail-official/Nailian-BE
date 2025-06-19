@@ -4,6 +4,7 @@ import art.snail.naillian.backend.common.PageDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailImageUrlDTO;
 import art.snail.naillian.backend.domain.nail.dto.NailSetEmbedDTO;
 import art.snail.naillian.backend.domain.nail.entity.NailTip;
+import art.snail.naillian.backend.domain.nail.repository.NailTipRepository;
 import art.snail.naillian.backend.domain.nail.service.NailService;
 import art.snail.naillian.backend.domain.onboarding.entity.OnboardingStep;
 import art.snail.naillian.backend.domain.onboarding.service.OnboardingService;
@@ -135,6 +136,8 @@ public class UserService {
                 .flatMap(nailSet -> nailService.getNailSetWithNailTip(nailSet.getId()));
     }
 
+    private final NailTipRepository tipRepository;
+
     /**
      * 사용자 네일 세트 보관 해제
      */
@@ -144,6 +147,11 @@ public class UserService {
 
         return getUserById(userId)
                 .then(nailService.deleteNailSetEnsureUser(userId, nailSetId))
+                .then();
+    }
+
+    public Mono<Void> fooFetcher(Pageable pageable) {
+        return tipRepository.findAllBy(pageable)
                 .then();
     }
 }

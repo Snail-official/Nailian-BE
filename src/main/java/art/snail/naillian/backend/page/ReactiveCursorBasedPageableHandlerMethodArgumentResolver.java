@@ -8,7 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolverSupport;
 import org.springframework.data.web.ReactiveSortHandlerMethodArgumentResolver;
-import org.springframework.lang.Nullable;
+import org.springframework.lang.NonNull;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.BindingContext;
 import org.springframework.web.reactive.result.method.SyncHandlerMethodArgumentResolver;
@@ -19,7 +19,7 @@ public class ReactiveCursorBasedPageableHandlerMethodArgumentResolver extends Pa
     private final ReactiveSortHandlerMethodArgumentResolver sortResolver = new ReactiveSortHandlerMethodArgumentResolver();
 
     @Override
-    @Nullable
+    @NonNull
     public Pageable resolveArgumentValue(MethodParameter parameter, BindingContext bindingContext, ServerWebExchange exchange) {
         MultiValueMap<String, String> queryParams = exchange.getRequest().getQueryParams();
         String page = queryParams.getFirst(this.getParameterNameToUse(this.getPageParameterName(), parameter));

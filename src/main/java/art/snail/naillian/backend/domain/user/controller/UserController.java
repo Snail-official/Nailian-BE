@@ -12,6 +12,8 @@ import art.snail.naillian.backend.domain.user.dto.UserScrapingNailSetIdDTO;
 import art.snail.naillian.backend.domain.user.service.UserService;
 import art.snail.naillian.backend.errors.ReportableError;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 @RequestMapping("/users")
 public class UserController {
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
 
     /**
@@ -112,5 +115,11 @@ public class UserController {
     ) {
         return userService.unScrapNailSetForUser(payload.getUserId(), setId)
                 .then(Mono.just(CommonResponse.success(null, "네일 세트가 보관함에서 삭제되었습니다.")));
+    }
+
+    @GetMapping("/foo")
+    public Mono<Void> foo(Pageable pageable) {
+        log.info("pageable={}", pageable.toString());
+        return userService.fooFetcher(pageable);
     }
 }
